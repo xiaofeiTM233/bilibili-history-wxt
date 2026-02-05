@@ -160,7 +160,7 @@ export default defineBackground(() => {
   };
 
   const handleSyncFavorites = async (
-    message: any,
+    _message: any,
     sendResponse: (response: any) => void
   ) => {
     try {
@@ -208,7 +208,7 @@ export default defineBackground(() => {
     }
   };
 
-  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === "syncHistory") {
       handleSyncHistory(message, sendResponse);
       return true; // 保持消息通道开放
@@ -308,7 +308,6 @@ export default defineBackground(() => {
               author_name: item.author_name || "",
               author_mid: item.author_mid || "",
               timestamp: Date.now(),
-              uploaded: false,
             });
           }
           console.log(`同步了${data.data.list.length}条历史记录`);

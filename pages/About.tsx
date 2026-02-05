@@ -1,17 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { UPDATE_HISTORY } from "../utils/constants";
 
 export const About: React.FC = () => {
-  const [version, setVersion] = useState<string>("");
-
-  useEffect(() => {
-    // 兼容 Chrome/Firefox
-    const manifest = browser?.runtime?.getManifest?.();
-    if (manifest?.version) {
-      setVersion(manifest.version);
-    }
-  }, []);
-
   return (
     <div className="max-w-[800px] mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">关于 Bilibili 无限历史记录</h1>
