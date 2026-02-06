@@ -15,7 +15,9 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
     "@types/howler": "^2.2.12",
+    "antd": "^6.2.3",
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
     "howler": "^2.2.4",

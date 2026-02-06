@@ -11,7 +11,7 @@ import {
   exportHistoryToCSV,
   exportHistoryToJSON,
 } from "../utils/export";
-import toast from "react-hot-toast";
+import { message, Modal, Switch, Button, Select, InputNumber, Card, Space, Divider } from "antd";
 import { HistoryItem } from "../utils/types";
 
 const Settings = () => {
@@ -32,7 +32,6 @@ const Settings = () => {
   const [favSyncInterval, setFavSyncInterval] = useState(1440);
 
   useEffect(() => {
-    // 加载同步删除设置
     const loadSettings = async () => {
       const syncDelete = await getStorageValue(IS_SYNC_DELETE, true);
       const syncDeleteFromBilibili = await getStorageValue(
@@ -50,20 +49,14 @@ const Settings = () => {
     loadSettings();
   }, []);
 
-  const handleSyncDeleteChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const newValue = e.target.checked;
-    setIsSyncDelete(newValue);
-    await setStorageValue(IS_SYNC_DELETE, newValue);
+  const handleSyncDeleteChange = async (checked: boolean) => {
+    setIsSyncDelete(checked);
+    await setStorageValue(IS_SYNC_DELETE, checked);
   };
 
-  const handleSyncDeleteFromBilibiliChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const newValue = e.target.checked;
-    setIsSyncDeleteFromBilibili(newValue);
-    await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, newValue);
+  const handleSyncDeleteFromBilibiliChange = async (checked: boolean) => {
+    setIsSyncDeleteFromBilibili(checked);
+    await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, checked);
   };
 
   const handleSyncIntervalChange = async (newInterval: number) => {
@@ -105,14 +98,14 @@ const Settings = () => {
       setIsExporting(true);
       if (formatToExport === "csv") {
         await exportHistoryToCSV();
-        toast.success("CSV导出成功！");
+        message.success("CSV导出成功！");
       } else if (formatToExport === "json") {
         await exportHistoryToJSON();
-        toast.success("JSON导出成功！");
+        message.success("JSON导出成功！");
       }
     } catch (error) {
       console.error(`导出 ${formatToExport.toUpperCase()} 失败:`, error);
-      toast.error(`导出 ${formatToExport.toUpperCase()} 失败，请重试！`);
+      message.error(`导出 ${formatToExport.toUpperCase()} 失败，请重试！`);
     } finally {
       setIsExporting(false);
     }
@@ -141,24 +134,24 @@ const Settings = () => {
                     typeof item.view_at === "undefined"
                 )
               ) {
-                toast.error(
+                message.error(
                   "文件内容格式不正确，请确保导入的是正确的历史记录文件。"
                 );
                 setIsImporting(false);
                 return;
               }
               await saveHistory(items);
-              toast.success("历史记录导入成功！");
+              message.success("历史记录导入成功！");
             } catch (parseError) {
               console.error("解析JSON文件失败:", parseError);
-              toast.error("导入失败，文件格式错误或内容不正确。");
+              message.error("导入失败，文件格式错误或内容不正确。");
             } finally {
               setIsImporting(false);
             }
           };
           reader.onerror = () => {
             console.error("读取文件失败");
-            toast.error("导入失败，无法读取文件。");
+            message.error("导入失败，无法读取文件。");
             setIsImporting(false);
           };
           reader.readAsText(file);
@@ -170,250 +163,188 @@ const Settings = () => {
       fileInput.click();
     } catch (error) {
       console.error(`导入失败:`, error);
-      toast.error("导入失败，请重试。");
+      message.error("导入失败，请重试。");
     } finally {
       setIsImporting(false);
     }
   };
 
-
-
   return (
-    <div className="p-4 flex flex-col container mx-auto items-center">
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4 ">
-          <div>
-            <h3 className="text-lg font-medium text-red-600">恢复出厂设置</h3>
-            <p className="text-sm text-gray-500">
-              清空所有本地历史记录数据和用户偏好，且无法恢复
-            </p>
-          </div>
-          <button
-            onClick={() => setShowConfirmDialog(true)}
-            className="px-4 py-2 text-sm text-red-600 hover:text-red-900 border border-red-200 rounded hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isResetLoading}
-          >
-            恢复出厂
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium">同步删除：插件 -&gt; B站</h3>
-            <p className="text-sm text-gray-500">
-              删除本地历史记录时同步删除B站服务器历史记录
-            </p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={isSyncDelete}
-              onChange={handleSyncDeleteChange}
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium">同步删除：B站 -&gt; 插件</h3>
-            <p className="text-sm text-gray-500">
-              在B站网页端删除历史记录时同步删除插件历史记录
-            </p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={isSyncDeleteFromBilibili}
-              onChange={handleSyncDeleteFromBilibiliChange}
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium text-blue-600">导出历史记录</h3>
-            <p className="text-sm text-gray-500">
-              将所有历史记录导出，方便备份和查看
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <select
-              value={exportFormat}
-              onChange={(e) =>
-                setExportFormat(e.target.value as "csv" | "json")
-              }
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+    <div className="p-6 container mx-auto">
+      <Card className="mb-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium">恢复出厂设置</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                清空所有本地历史记录数据和用户偏好，且无法恢复
+              </p>
+            </div>
+            <Button
+              danger
+              onClick={() => setShowConfirmDialog(true)}
+              disabled={isResetLoading}
             >
-              <option value="json">JSON</option>
-              <option value="csv">CSV</option>
-            </select>
-            <button
-              onClick={() => handleExport(exportFormat)}
-              className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isExporting}
-            >
-              {isExporting ? "导出中..." : "导出"}
-            </button>
+              恢复出厂
+            </Button>
           </div>
-        </div>
-      </div>
 
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium text-blue-600">导入历史记录</h3>
-            <p className="text-sm text-gray-500">
-              将.json文件导入，恢复历史记录
-            </p>
+          <Divider />
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium text-blue-600">导出历史记录</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                将所有历史记录导出，方便备份和查看
+              </p>
+            </div>
+            <Space size="large">
+              <Select
+                value={exportFormat}
+                onChange={(value) => setExportFormat(value as "csv" | "json")}
+                disabled={isExporting}
+                style={{ width: 100 }}
+                options={[
+                  { label: "JSON", value: "json" },
+                  { label: "CSV", value: "csv" },
+                ]}
+              />
+              <Button
+                type="primary"
+                onClick={() => handleExport(exportFormat)}
+                disabled={isExporting}
+                loading={isExporting}
+              >
+                导出
+              </Button>
+            </Space>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
+
+          <Divider />
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium text-blue-600">导入历史记录</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                将.json文件导入，恢复历史记录
+              </p>
+            </div>
+            <Button
+              type="primary"
               onClick={() => handleImport()}
-              className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isImporting}
+              loading={isImporting}
             >
-              {isImporting ? "导入中..." : "导入"}
-            </button>
+              导入
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium text-fuchsia-600">
-              自动同步时间间隔
-            </h3>
-            <p className="text-sm text-gray-500">单位：分钟，最小值为1</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleSyncIntervalChange(syncInterval - 1)}
-              className="px-3 py-1 text-sm text-white bg-fuchsia-500 rounded hover:bg-fuchsia-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={syncInterval <= 1}
-            >
-              -
-            </button>
-            <input
-              type="number"
-              value={syncInterval}
-              onChange={(e) => {
-                const filteredValue = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = parseInt(filteredValue) || 1;
-                handleSyncIntervalChange(Math.max(1, numValue));
-              }}
-              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <button
-              onClick={() => handleSyncIntervalChange(syncInterval + 1)}
-              className="px-3 py-1 text-sm text-white bg-fuchsia-500 rounded hover:bg-fuchsia-600 transition-colors"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mb-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <h3 className="text-lg font-medium text-pink-500">
-              自动同步收藏夹时间间隔
-            </h3>
-            <p className="text-sm text-gray-500">单位：分钟，最小值为10</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleFavSyncIntervalChange(favSyncInterval - 10)}
-              className="px-3 py-1 text-sm text-white bg-pink-500 rounded hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={favSyncInterval <= 10}
-            >
-              -
-            </button>
-            <input
-              type="number"
-              value={favSyncInterval}
-              onChange={(e) => {
-                const filteredValue = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = parseInt(filteredValue) || 10;
-                handleFavSyncIntervalChange(Math.max(10, numValue));
-              }}
-              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded-md w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <button
-              onClick={() => handleFavSyncIntervalChange(favSyncInterval + 10)}
-              className="px-3 py-1 text-sm text-white bg-pink-500 rounded hover:bg-pink-600 transition-colors"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 确认弹窗 */}
-      {
-        showConfirmDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-              <h3 className="text-xl font-semibold mb-4">确认恢复出厂设置？</h3>
-              <p className="text-gray-600 mb-6">
-                此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
+      <Card className="mb-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium">同步删除：插件 -&gt; B站</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                删除本地历史记录时同步删除B站服务器历史记录
               </p>
-              {isResetLoading && (
-                <p className="text-blue-600 mb-4">{resetStatus}</p>
-              )}
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowConfirmDialog(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isResetLoading}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => {
-                    handleReset();
-                  }}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isResetLoading}
-                >
-                  确认
-                </button>
-              </div>
             </div>
+            <Switch checked={isSyncDelete} onChange={handleSyncDeleteChange} />
           </div>
-        )
-      }
 
-      {
-        showResetResultDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-              <p className="text-xl text-gray-600 mb-6 text-center font-medium">
-                {resetResult}
+          <Divider />
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium">同步删除：B站 -&gt; 插件</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                在B站网页端删除历史记录时同步删除插件历史记录
               </p>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowResetResultDialog(false)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                >
-                  确定
-                </button>
-              </div>
             </div>
+            <Switch checked={isSyncDeleteFromBilibili} onChange={handleSyncDeleteFromBilibiliChange} />
           </div>
-        )
-      }
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium text-fuchsia-600">
+                自动同步时间间隔
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为1</p>
+            </div>
+            <Space size="large">
+              <span className="text-gray-600">间隔时间：</span>
+              <InputNumber
+                mode="spinner"
+                min={1}
+                max={999}
+                value={syncInterval}
+                onChange={(value) => handleSyncIntervalChange(value || 1)}
+                style={{ width: 200 }}
+              />
+            </Space>
+          </div>
+
+          <Divider />
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-base font-medium text-pink-500">
+                自动同步收藏夹时间间隔
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为10</p>
+            </div>
+            <Space size="large">
+              <span className="text-gray-600">间隔时间：</span>
+              <InputNumber
+                mode="spinner"
+                min={10}
+                max={9999}
+                step={10}
+                value={favSyncInterval}
+                onChange={(value) => handleFavSyncIntervalChange(value || 10)}
+                style={{ width: 200 }}
+              />
+            </Space>
+          </div>
+        </div>
+      </Card>
+
+      <Modal
+        title="确认恢复出厂设置？"
+        open={showConfirmDialog}
+        onOk={() => {
+          handleReset();
+        }}
+        onCancel={() => setShowConfirmDialog(false)}
+        okText="确认"
+        cancelText="取消"
+        okButtonProps={{ danger: true, loading: isResetLoading }}
+        cancelButtonProps={{ disabled: isResetLoading }}
+      >
+        <p className="text-gray-600">
+          此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
+        </p>
+        {isResetLoading && (
+          <p className="text-blue-600 mt-4">{resetStatus}</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={showResetResultDialog}
+        onOk={() => setShowResetResultDialog(false)}
+        onCancel={() => setShowResetResultDialog(false)}
+        okText="确定"
+        cancelButtonProps={{ style: { display: "none" } }}
+      >
+        <p className="text-xl text-gray-600 text-center font-medium">
+          {resetResult}
+        </p>
+      </Modal>
     </div >
   );
 };

@@ -2,28 +2,47 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { History } from "../../pages/History";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
-import ScrollToTopButton from "../../components/ScrollToTopButton";
-import { Toaster } from "react-hot-toast";
 import { Favorites } from "../../pages/Favorites";
+import { ConfigProvider, App as AntApp, FloatButton } from "antd";
+import { VerticalAlignTopOutlined } from "@ant-design/icons";
+import zhCN from "antd/locale/zh_CN";
+
 const App = () => {
   return (
     <HashRouter>
-      <Toaster position="top-center" />
-      <div className="flex h-screen">
-        <Sidebar />
-        {/* 主内容区域 */}
-        <div className="ml-40 w-full">
-          <div>
-            <Routes>
-              <Route path="/" element={<History />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+      <ConfigProvider
+        locale={zhCN}
+        theme={{
+          token: {
+            colorPrimary: "#fb7299",
+          },
+          components: {
+            FloatButton: {
+              colorPrimary: "#fb7299",
+            },
+          },
+        }}
+      >
+        <AntApp>
+          <div className="flex h-screen">
+            <Sidebar />
+            {/* 主内容区域 */}
+            <div className="ml-40 w-full">
+              <div>
+                <Routes>
+                  <Route path="/" element={<History />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+              <FloatButton.BackTop
+                type="primary"
+              />
+            </div>
           </div>
-          <ScrollToTopButton />
-        </div>
-      </div>
+        </AntApp>
+      </ConfigProvider>
     </HashRouter>
   );
 };

@@ -3,3 +3,8 @@
   display: flex;
   flex-direction: column;
 }
+
+.no-hover-effect:hover {
+  background-color: #1677ff !important;
+}
+

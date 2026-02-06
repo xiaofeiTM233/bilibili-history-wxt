@@ -3,7 +3,7 @@ import { getContentUrl } from "../utils/common";
 import { Trash2 } from "lucide-react";
 import { deleteHistoryItem } from "../utils/db";
 import { getStorageValue } from "../utils/storage";
-import { toast } from "react-hot-toast";
+import { message } from "antd";
 import { IS_SYNC_DELETE } from "../utils/constants";
 import { getTypeTag } from "../utils/common";
 
@@ -78,7 +78,7 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
       onDelete?.();
     } catch (error) {
       console.error("删除历史记录失败:", error);
-      toast.error(error instanceof Error ? error.message : "删除历史记录失败");
+      message.error(error instanceof Error ? error.message : "删除历史记录失败");
     }
   };
 
@@ -116,19 +116,17 @@ export const HistoryItem: React.FC<HistoryItemProps> = ({ item, onDelete }) => {
               </button>
             </div>
             <div className="flex justify-between items-center text-gray-500 text-xs mt-1">
-              <span
+              <a
+                href={`https://space.bilibili.com/${item.author_mid}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => {
-                  e.preventDefault();
                   e.stopPropagation();
-                  window.open(
-                    `https://space.bilibili.com/${item.author_mid}`,
-                    "_blank"
-                  );
                 }}
-                className="hover:text-[#fb7299] transition-colors cursor-pointer"
+                className="hover:text-[#fb7299] transition-colors no-underline text-inherit"
               >
                 {item.author_name}
-              </span>
+              </a>
               <span>{new Date(item.view_at * 1000).toLocaleString()}</span>
             </div>
           </div>

@@ -1,40 +1,52 @@
 
 
+import { Menu } from "antd";
 import {
-  Star,
-  HistoryIcon,
-  SettingsIcon,
-} from "lucide-react";
-import ExpandableMenu from "./ExpandableMenu";
+  StarOutlined,
+  HistoryOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
+import type { MenuProps } from "antd";
 
-const menuList = [
+type MenuItem = Required<MenuProps>["items"][number];
+
+const items: MenuItem[] = [
   {
-    title: "历史记录",
-    icon: <HistoryIcon className="w-4 h-4" />,
-    to: "/",
+    key: "/",
+    icon: <HistoryOutlined />,
+    label: "历史记录",
   },
   {
-    title: "收藏夹",
-    icon: <Star className="w-4 h-4" />,
-    to: "/favorites",
+    key: "/favorites",
+    icon: <StarOutlined />,
+    label: "收藏夹",
   },
   {
-    title: "设置",
-    icon: <SettingsIcon className="w-4 h-4" />,
-    to: "/settings",
+    key: "/settings",
+    icon: <SettingOutlined />,
+    label: "设置",
   },
 ];
 
 export const Sidebar = () => {
-  return (
-    <div className="fixed top-0 left-0 w-40 bg-gray-100 flex-shrink-0 h-full">
-      <nav className="space-y-2 p-4">
-        {menuList.map((item, index) => (
-          <ExpandableMenu key={index} {...item} />
-        ))}
-      </nav>
+  const navigate = useNavigate();
+  const location = useLocation();
 
-      <p className="absolute bottom-2 left-2 text-gray-600 text-base">
+  const handleMenuClick: MenuProps["onClick"] = (e) => {
+    navigate(e.key);
+  };
+
+  return (
+    <div className="fixed top-0 left-0 w-40 bg-gray-50 flex-shrink-0 h-full">
+      <Menu
+        mode="vertical"
+        selectedKeys={[location.pathname]}
+        items={items}
+        onClick={handleMenuClick}
+        className="border-r-0 h-full"
+      />
+      <p className="absolute bottom-2 left-2 text-gray-600 text-sm">
         v2.0.1
       </p>
     </div>
