@@ -35,7 +35,7 @@ export const Sidebar = () => {
       </nav>
 
       <p className="absolute bottom-2 left-2 text-gray-600 text-base">
-        v2.0.0
+        v2.0.1
       </p>
     </div>
   );
