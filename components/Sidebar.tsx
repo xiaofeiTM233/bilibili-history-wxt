@@ -2,8 +2,6 @@
 import {
   Star,
   HistoryIcon,
-  InfoIcon,
-  MessageCircleIcon,
   SettingsIcon,
 } from "lucide-react";
 import ExpandableMenu from "./ExpandableMenu";
@@ -19,16 +17,6 @@ const menuList = [
     title: "收藏夹",
     icon: <Star className="w-4 h-4" />,
     to: "/favorites",
-  },
-  {
-    title: "关于",
-    icon: <InfoIcon className="w-4 h-4" />,
-    to: "/about",
-  },
-  {
-    title: "反馈",
-    icon: <MessageCircleIcon className="w-4 h-4" />,
-    to: "/feedback",
   },
   {
     title: "设置",

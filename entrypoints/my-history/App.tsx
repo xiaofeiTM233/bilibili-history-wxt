@@ -1,11 +1,9 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { History } from "../../pages/History";
-import { About } from "../../pages/About";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
 import ScrollToTopButton from "../../components/ScrollToTopButton";
 import { Toaster } from "react-hot-toast";
-import Feedback from "../../pages/Feedback";
 import { Favorites } from "../../pages/Favorites";
 const App = () => {
   return (
@@ -18,9 +16,7 @@ const App = () => {
           <div>
             <Routes>
               <Route path="/" element={<History />} />
-              <Route path="/about" element={<About />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/feedback" element={<Feedback />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -25,9 +25,9 @@ export default defineBackground(() => {
       periodInMinutes: 1,
     });
 
-    // 只在首次安装时打开 about 页面
+    // 只在首次安装时打开历史记录页面
     if (details.reason === "install") {
-      browser.tabs.create({ url: "/about.html" });
+      browser.tabs.create({ url: "/my-history.html" });
     }
   });
 
