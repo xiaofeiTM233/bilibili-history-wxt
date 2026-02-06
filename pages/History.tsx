@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HistoryItem } from "../components/HistoryItem";
-import { getHistory, clearHistory, getTotalHistoryCount } from "../utils/db";
+import { getHistory, getTotalHistoryCount } from "../utils/db";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
 import { RefreshCwIcon, ChevronDownIcon } from "lucide-react";
@@ -17,18 +17,31 @@ export const History: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
+  const [searchType, setSearchType] = useState("all");
+  const [isSearchTypeOpen, setIsSearchTypeOpen] = useState(false);
+  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingRef = useRef<boolean>(false);
 
   const typeOptions = [
-    { value: "all", label: "全部分类" },
+    { value: "all", label: "全部" },
     { value: "archive", label: "视频" },
     { value: "live", label: "直播" },
     { value: "pgc", label: "番剧" },
     { value: "article", label: "专栏" },
     { value: "cheese", label: "课堂" },
+  ];
+
+  const searchTypeOptions = [
+    { value: "all", label: "综合" },
+    { value: "title", label: "标题" },
+    { value: "author", label: "作者" },
+    { value: "bvid", label: "BV" },
+    { value: "id", label: "AV" },
   ];
 
   const loadHistory = async (isAppend: boolean = false) => {
@@ -60,7 +73,10 @@ export const History: React.FC = () => {
         debouncedKeyword,
         debouncedAuthorKeyword,
         date,
-        selectedType
+        selectedType,
+        searchType,
+        startDate,
+        endDate
       );
 
       if (isAppend) {
@@ -82,7 +98,7 @@ export const History: React.FC = () => {
   // 当debouncedKeyword或debouncedAuthorKeyword变化时重新加载数据
   useEffect(() => {
     loadHistory(false);
-  }, [debouncedKeyword, debouncedAuthorKeyword, date, selectedType]);
+  }, [debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate]);
 
   useEffect(() => {
     getTotalCount();
@@ -117,7 +133,7 @@ export const History: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date, selectedType]);
+  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate]);
 
   const getLoadMoreText = () => {
     if (history.length === 0) {
@@ -132,13 +148,82 @@ export const History: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
-        <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
+        <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full whitespace-nowrap">
           总记录数：{totalHistoryCount}
         </span>
-        <div className="flex items-center gap-4">
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* 日期范围选择器 - 放在最前面 */}
           <div className="relative z-20">
-            {/* 遮罩层，用于点击外部关闭下拉菜单 */}
+            {isDateDropdownOpen && (
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsDateDropdownOpen(false)}
+              ></div>
+            )}
+
+            <button
+              onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
+              className={`
+                flex items-center justify-between px-4 py-2 
+                bg-gray-50 hover:bg-gray-100 
+                border transition-all duration-200
+                text-gray-700 text-sm font-medium
+                rounded-lg min-w-[100px] outline-none
+                ${isDateDropdownOpen
+                  ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                  : 'border-gray-200'
+                }
+              `}
+            >
+              <span className="truncate">
+                {startDate && endDate ? `${startDate.substring(5)}~${endDate.substring(5)}` : "日期"}
+              </span>
+              <ChevronDownIcon
+                className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isDateDropdownOpen ? 'rotate-180 text-blue-500' : ''}`}
+              />
+            </button>
+
+            {isDateDropdownOpen && (
+              <div className="absolute top-full left-0 mt-2 w-[240px] bg-white border border-gray-100 rounded-xl shadow-xl z-30 p-4 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">开始日期</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">结束日期</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                  {(startDate || endDate) && (
+                    <button
+                      className="w-full px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      onClick={() => {
+                        setStartDate("");
+                        setEndDate("");
+                      }}
+                    >
+                      清除日期
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 分类选择器 */}
+          <div className="relative z-20">
             {isTypeDropdownOpen && (
               <div
                 className="fixed inset-0 z-10"
@@ -146,15 +231,14 @@ export const History: React.FC = () => {
               ></div>
             )}
 
-            {/* 触发按钮 */}
             <button
               onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
               className={`
-                flex items-center justify-between gap-2 px-4 py-2 
+                flex items-center justify-between px-4 py-2 
                 bg-gray-50 hover:bg-gray-100 
                 border transition-all duration-200
                 text-gray-700 text-sm font-medium
-                rounded-lg min-w-[120px] outline-none
+                rounded-lg w-[100px] outline-none
                 ${isTypeDropdownOpen
                   ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
                   : 'border-gray-200'
@@ -162,16 +246,15 @@ export const History: React.FC = () => {
               `}
             >
               <span>
-                {typeOptions.find(opt => opt.value === selectedType)?.label || "全部分类"}
+                {typeOptions.find(opt => opt.value === selectedType)?.label || "全部"}
               </span>
               <ChevronDownIcon
                 className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-blue-500' : ''}`}
               />
             </button>
 
-            {/* 下拉菜单 */}
             {isTypeDropdownOpen && (
-              <div className="absolute top-full right-0 mt-2 w-[140px] bg-white border border-gray-100 rounded-xl shadow-xl z-30 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+              <div className="absolute top-full left-0 mt-2 w-[100px] bg-white border border-gray-100 rounded-xl shadow-xl z-30 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
                 {typeOptions.map((option) => (
                   <div
                     key={option.value}
@@ -197,102 +280,141 @@ export const History: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* 搜索类型选择器 */}
+          <div className="relative z-20">
+            {isSearchTypeOpen && (
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsSearchTypeOpen(false)}
+              ></div>
+            )}
+
             <button
-              className="px-3 py-2 border border-gray-200 rounded-l bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
-              disabled={!date}
-              onClick={() => {
-                if (date) {
-                  const currentDate = new Date(date);
-                  currentDate.setDate(currentDate.getDate() - 1);
-                  setDate(currentDate.toISOString().split("T")[0]);
+              onClick={() => setIsSearchTypeOpen(!isSearchTypeOpen)}
+              className={`
+                flex items-center justify-between px-4 py-2 
+                bg-gray-50 hover:bg-gray-100 
+                border transition-all duration-200
+                text-gray-700 text-sm font-medium
+                rounded-lg w-[100px] outline-none
+                ${isSearchTypeOpen
+                  ? 'border-blue-500 ring-2 ring-blue-100 bg-white'
+                  : 'border-gray-200'
                 }
-              }}
+              `}
             >
-              -
+              <span>
+                {searchTypeOptions.find(opt => opt.value === searchType)?.label || "综合"}
+              </span>
+              <ChevronDownIcon
+                className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isSearchTypeOpen ? 'rotate-180 text-blue-500' : ''}`}
+              />
             </button>
-            <input
-              type="date"
-              className="px-2 py-2 border border-gray-200"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-              }}
-            />
-            <button
-              className="px-3 py-2 border border-gray-200 rounded-r bg-gray-50 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400"
-              disabled={!date}
-              onClick={() => {
-                if (date) {
-                  const currentDate = new Date(date);
-                  currentDate.setDate(currentDate.getDate() + 1);
-                  setDate(currentDate.toISOString().split("T")[0]);
-                }
-              }}
-            >
-              +
-            </button>
-          </div>
-          <div className="relative mr-2">
-            <input
-              type="text"
-              className="w-[200px] px-2 py-2 border border-gray-200 rounded"
-              placeholder="搜索UP主..."
-              value={authorKeyword}
-              onChange={(e) => setAuthorKeyword(e.target.value)}
-            />
-            {authorKeyword && (
-              <button
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors"
-                onClick={() => setAuthorKeyword("")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+
+            {isSearchTypeOpen && (
+              <div className="absolute top-full left-0 mt-2 w-[100px] bg-white border border-gray-100 rounded-xl shadow-xl z-30 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+                {searchTypeOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => {
+                      setSearchType(option.value);
+                      setIsSearchTypeOpen(false);
+                      setKeyword("");
+                      setAuthorKeyword("");
+                      setDate("");
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className={`
+                      px-4 py-2.5 text-sm cursor-pointer transition-colors
+                      flex items-center justify-between
+                      ${searchType === option.value
+                        ? 'bg-blue-50 text-blue-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    {option.label}
+                    {searchType === option.value && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-          <div className="relative mr-2">
-            <input
-              type="text"
-              className="w-[300px] px-2 py-2 border border-gray-200 rounded"
-              placeholder="搜索标题..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-            {keyword && (
-              <button
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors"
-                onClick={() => setKeyword("")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+
+          {/* 搜索输入框 - 统一宽度为250px */}
+          {searchType === "title" || searchType === "author" || searchType === "all" ? (
+            <div className="relative">
+              <input
+                type="text"
+                className="w-[250px] px-3 py-2 border border-gray-200 rounded"
+                placeholder={
+                  searchType === "title" ? "搜索标题..." :
+                  searchType === "author" ? "搜索作者..." :
+                  "搜索标题或作者..."
+                }
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+              {keyword && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                  onClick={() => setKeyword("")}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ) : searchType === "bvid" || searchType === "id" ? (
+            <div className="relative">
+              <input
+                type="text"
+                className="w-[250px] px-3 py-2 border border-gray-200 rounded"
+                placeholder={searchType === "bvid" ? "输入BV号（如: BV1GJ411x7h7）" : "输入av号（如: av80433022）"}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+              {keyword && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                  onClick={() => setKeyword("")}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          {/* 刷新按钮 */}
           <button
             onClick={() => {
               loadHistory(false);

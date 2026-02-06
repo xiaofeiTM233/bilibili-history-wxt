@@ -12,6 +12,15 @@ export interface HistoryItem {
   uri?: string;
 }
 
+export interface SearchParams {
+  searchType: "all" | "bvid" | "id" | "title" | "author";
+  keyword: string;
+  authorKeyword: string;
+  startDate: string;
+  endDate: string;
+  businessType: string;
+}
+
 export interface DBConfig {
   name: string;
   version: number;

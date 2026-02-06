@@ -199,6 +199,51 @@ const matchAuthorKeyword = (item: HistoryItem, authorKeyword: string) => {
   );
 };
 
+// 匹配 BV 号（精准搜索）
+const matchBvid = (item: HistoryItem, bvid: string) => {
+  if (!bvid) return true;
+  // 支持 BV、bv、Bv 等大小写组合
+  const normalizedInput = bvid.toLowerCase();
+  const normalizedBvid = item.bvid.toLowerCase();
+  return normalizedBvid === normalizedInput;
+};
+
+// 匹配 av 号（精准搜索）
+const matchId = (item: HistoryItem, id: string) => {
+  if (!id) return true;
+  // 移除可能的前缀
+  const numericId = id.replace(/^av/i, "");
+  return item.id.toString() === numericId;
+};
+
+// 匹配日期区间
+const matchDateRange = (item: HistoryItem, startDate: string, endDate: string) => {
+  if (!startDate && !endDate) return true;
+
+  const itemDate = dayjs(item.view_at * 1000);
+  const start = startDate ? dayjs(startDate).startOf('day') : null;
+  const end = endDate ? dayjs(endDate).add(1, 'day').startOf('day') : null;
+
+  if (start && end) {
+    return itemDate >= start && itemDate < end;
+  } else if (start) {
+    return itemDate >= start;
+  } else if (end) {
+    return itemDate < end;
+  }
+  return true;
+};
+
+// 综合搜索（模糊搜索标题和作者）
+const matchAll = (item: HistoryItem, keyword: string) => {
+  if (!keyword) return true;
+  const lowerKeyword = keyword.toLowerCase();
+  return (
+    item.title.toLowerCase().includes(lowerKeyword) ||
+    item.author_name.toLowerCase().includes(lowerKeyword)
+  );
+};
+
 export const getTotalHistoryCount = async (): Promise<number> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
@@ -224,7 +269,10 @@ export const getHistory = async (
   keyword: string = "",
   authorKeyword: string = "",
   date: string = "",
-  businessType: string = ""
+  businessType: string = "",
+  searchType: string = "all",
+  startDate: string = "",
+  endDate: string = ""
 ): Promise<{ items: HistoryItem[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("history", "readonly");
@@ -250,7 +298,61 @@ export const getHistory = async (
 
         // 如果还没收集够数据，继续收集
         if (items.length < pageSize) {
-          if (matchCondition(value, keyword, authorKeyword, date, businessType)) {
+          let isMatch = false;
+
+          switch (searchType) {
+            case "all":
+              // 综合搜索（模糊搜索标题和作者）
+              isMatch = matchAll(value, keyword);
+              break;
+            case "bvid":
+              // BV号精准搜索
+              isMatch = matchBvid(value, keyword);
+              break;
+            case "id":
+              // av号精准搜索
+              isMatch = matchId(value, keyword);
+              break;
+            case "title":
+              // 标题模糊搜索
+              isMatch = matchKeyword(value, keyword);
+              break;
+            case "author":
+              // 作者名称模糊搜索
+              isMatch = matchAuthorKeyword(value, keyword);
+              break;
+            default:
+              // 默认使用原有的综合搜索逻辑
+              isMatch = matchCondition(value, keyword, authorKeyword, date, businessType);
+              break;
+          }
+
+          // 如果不是综合搜索，还需要考虑分类和日期
+          if (searchType !== "all") {
+            // 检查分类
+            if (!matchBusinessType(value, businessType)) {
+              isMatch = false;
+            }
+            // 检查日期区间（新功能）
+            if (!matchDateRange(value, startDate, endDate)) {
+              isMatch = false;
+            }
+          } else if (isMatch) {
+            // 综合搜索模式下，如果关键词匹配，再检查分类和日期
+            if (!matchBusinessType(value, businessType)) {
+              isMatch = false;
+            }
+            // 检查日期区间（新功能）
+            if (!matchDateRange(value, startDate, endDate)) {
+              isMatch = false;
+            }
+            // 兼容旧的日期搜索（单日期）
+            if (date && !matchDate(value, date)) {
+              isMatch = false;
+            }
+          }
+
+          if (isMatch) {
             items.push(value);
           }
           cursor.continue();
