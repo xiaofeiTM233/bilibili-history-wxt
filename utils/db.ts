@@ -597,7 +597,61 @@ export const saveFavResources = async (resources: FavoriteResource[]): Promise<v
   });
 };
 
-export const getFavResources = async (folderId?: number): Promise<FavoriteResource[]> => {
+// 收藏夹筛选函数
+const favMatchBvid = (item: FavoriteResource, bvid: string) => {
+  if (!bvid) return true;
+  return item.bvid === bvid || item.bv_id === bvid;
+};
+
+const favMatchId = (item: FavoriteResource, id: string) => {
+  if (!id) return true;
+  const numericId = id.replace(/^av/i, "");
+  return item.id.toString() === numericId;
+};
+
+const favMatchKeyword = (item: FavoriteResource, keyword: string) => {
+  if (!keyword) return true;
+  return item.title.toLowerCase().includes(keyword.toLowerCase());
+};
+
+const favMatchAuthor = (item: FavoriteResource, keyword: string) => {
+  if (!keyword) return true;
+  return item.upper.name.toLowerCase().includes(keyword.toLowerCase());
+};
+
+const favMatchAll = (item: FavoriteResource, keyword: string) => {
+  if (!keyword) return true;
+  const lowerKeyword = keyword.toLowerCase();
+  return (
+    item.title.toLowerCase().includes(lowerKeyword) ||
+    item.upper.name.toLowerCase().includes(lowerKeyword)
+  );
+};
+
+const favMatchDateRange = (item: FavoriteResource, startDate: string, endDate: string) => {
+  if (!startDate && !endDate) return true;
+
+  const itemDate = dayjs((item.fav_time || item.ctime) * 1000);
+  const start = startDate ? dayjs(startDate).startOf('day') : null;
+  const end = endDate ? dayjs(endDate).add(1, 'day').startOf('day') : null;
+
+  if (start && end) {
+    return itemDate >= start && itemDate < end;
+  } else if (start) {
+    return itemDate >= start;
+  } else if (end) {
+    return itemDate < end;
+  }
+  return true;
+};
+
+export const getFavResources = async (
+  folderId?: number,
+  keyword: string = "",
+  searchType: string = "all",
+  startDate: string = "",
+  endDate: string = ""
+): Promise<FavoriteResource[]> => {
   const db = await openDB();
   const tx = db.transaction("favResources", "readonly");
   const store = tx.objectStore("favResources");
@@ -610,7 +664,46 @@ export const getFavResources = async (folderId?: number): Promise<FavoriteResour
     } else {
       request = store.getAll();
     }
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      let items = request.result as FavoriteResource[];
+
+      // 根据搜索类型进行筛选
+      items = items.filter((item) => {
+        let isMatch = false;
+
+        switch (searchType) {
+          case "all":
+            isMatch = favMatchAll(item, keyword);
+            break;
+          case "bvid":
+            isMatch = favMatchBvid(item, keyword);
+            break;
+          case "id":
+            isMatch = favMatchId(item, keyword);
+            break;
+          case "title":
+            isMatch = favMatchKeyword(item, keyword);
+            break;
+          case "author":
+            isMatch = favMatchAuthor(item, keyword);
+            break;
+          default:
+            isMatch = true;
+            break;
+        }
+
+        // 检查日期区间
+        if (isMatch && (startDate || endDate)) {
+          isMatch = favMatchDateRange(item, startDate, endDate);
+        }
+
+        return isMatch;
+      });
+
+      // Sort by index
+      const sortedItems = items.sort((a, b) => (a.index || 0) - (b.index || 0));
+      resolve(sortedItems);
+    };
     request.onerror = () => reject(request.error);
   });
 };
