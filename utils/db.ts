@@ -234,9 +234,21 @@ const matchDateRange = (item: HistoryItem, startDate: string, endDate: string) =
   return true;
 };
 
-// 综合搜索（模糊搜索标题和作者）
+// 综合搜索（支持模糊搜索标题和作者，也支持精准搜索BV号和AV号）
 const matchAll = (item: HistoryItem, keyword: string) => {
   if (!keyword) return true;
+
+  // 检查是否是BV号精准搜索
+  if (keyword.toLowerCase().startsWith('bv') && matchBvid(item, keyword)) {
+    return true;
+  }
+
+  // 检查是否是av号精准搜索
+  if (keyword.toLowerCase().startsWith('av') && matchId(item, keyword)) {
+    return true;
+  }
+
+  // 模糊搜索标题和作者
   const lowerKeyword = keyword.toLowerCase();
   return (
     item.title.toLowerCase().includes(lowerKeyword) ||
@@ -621,6 +633,18 @@ const favMatchAuthor = (item: FavoriteResource, keyword: string) => {
 
 const favMatchAll = (item: FavoriteResource, keyword: string) => {
   if (!keyword) return true;
+
+  // 检查是否是BV号精准搜索
+  if (keyword.toLowerCase().startsWith('bv') && favMatchBvid(item, keyword)) {
+    return true;
+  }
+
+  // 检查是否是av号精准搜索
+  if (keyword.toLowerCase().startsWith('av') && favMatchId(item, keyword)) {
+    return true;
+  }
+
+  // 模糊搜索标题和作者
   const lowerKeyword = keyword.toLowerCase();
   return (
     item.title.toLowerCase().includes(lowerKeyword) ||

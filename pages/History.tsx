@@ -354,7 +354,7 @@ export const History: React.FC = () => {
                 placeholder={
                   searchType === "title" ? "搜索标题..." :
                   searchType === "author" ? "搜索作者..." :
-                  "搜索标题或作者..."
+                  "搜索标题/作者/BV号/AV号..."
                 }
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
