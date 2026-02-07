@@ -163,7 +163,7 @@ export const History: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="h-screen flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
         <Tag color="blue">
           总记录数：{totalHistoryCount}
@@ -245,8 +245,9 @@ export const History: React.FC = () => {
         </Space>
       </div>
 
-      <div className="w-full p-6">
-        {history.length > 0 ? (
+      <div className="flex-1 overflow-y-auto">
+        <div className="w-full p-6">
+          {history.length > 0 ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
             {history.map((item) => (
               <HistoryItem
@@ -265,7 +266,8 @@ export const History: React.FC = () => {
           />
         )}
         <div ref={loadMoreRef} className="text-center my-8">
-          {isLoading ? <Spin /> : <span className="text-gray-500">{getLoadMoreText()}</span>}
+          {history.length > 0 && (isLoading ? <Spin /> : <span className="text-gray-500">{getLoadMoreText()}</span>)}
+        </div>
         </div>
       </div>
     </div>
