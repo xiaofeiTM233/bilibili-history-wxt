@@ -674,8 +674,10 @@ export const getFavResources = async (
   keyword: string = "",
   searchType: string = "all",
   startDate: string = "",
-  endDate: string = ""
-): Promise<FavoriteResource[]> => {
+  endDate: string = "",
+  lastItem?: FavoriteResource,
+  limit: number = 100
+): Promise<{ items: FavoriteResource[]; hasMore: boolean }> => {
   const db = await openDB();
   const tx = db.transaction("favResources", "readonly");
   const store = tx.objectStore("favResources");
@@ -726,7 +728,21 @@ export const getFavResources = async (
 
       // Sort by index
       const sortedItems = items.sort((a, b) => (a.index || 0) - (b.index || 0));
-      resolve(sortedItems);
+
+      // 如果有 lastItem，则从该 item 之后开始返回
+      let filteredItems = sortedItems;
+      if (lastItem) {
+        const lastIndex = sortedItems.findIndex(item => item.id === lastItem.id);
+        if (lastIndex !== -1) {
+          filteredItems = sortedItems.slice(lastIndex + 1);
+        }
+      }
+
+      // 分页返回
+      const hasMore = filteredItems.length > limit;
+      const paginatedItems = filteredItems.slice(0, limit);
+
+      resolve({ items: paginatedItems, hasMore });
     };
     request.onerror = () => reject(request.error);
   });

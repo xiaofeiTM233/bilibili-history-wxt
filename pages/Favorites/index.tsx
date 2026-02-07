@@ -32,8 +32,12 @@ export const Favorites = () => {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+    const [hasMore, setHasMore] = useState(true);
 
     const contentRef = useRef<HTMLDivElement>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
+    const isLoadingRef = useRef<boolean>(false);
 
     useEffect(() => {
         loadFolders();
@@ -41,7 +45,7 @@ export const Favorites = () => {
 
     useEffect(() => {
         if (selectedFolderId) {
-            loadResources(selectedFolderId);
+            loadResources(selectedFolderId, false);
         } else if (folders.length > 0) {
             setSelectedFolderId(folders[0].id);
         }
@@ -58,21 +62,41 @@ export const Favorites = () => {
         }
     };
 
-    const loadResources = async (folderId: number) => {
-        setLoading(true);
+    const loadResources = async (folderId: number, isAppend: boolean = false) => {
+        if (isLoadingRef.current) {
+            return;
+        }
+
         try {
-            const list = await getFavResources(
+            setLoading(true);
+            isLoadingRef.current = true;
+
+            const lastItem = isAppend && resources.length > 0 ? resources[resources.length - 1] : undefined;
+
+            const result = await getFavResources(
                 folderId,
                 debouncedKeyword,
                 searchType,
                 startDate,
-                endDate
+                endDate,
+                lastItem
             );
-            setResources(list);
+
+            if (isAppend) {
+                setResources(prev => [...prev, ...result.items]);
+            } else {
+                setResources(result.items);
+                if (contentRef.current) {
+                    contentRef.current.scrollTop = 0;
+                }
+            }
+
+            setHasMore(result.hasMore);
         } catch (error) {
             console.error("加载收藏资源失败", error);
         } finally {
             setLoading(false);
+            isLoadingRef.current = false;
         }
     };
 
@@ -85,6 +109,40 @@ export const Favorites = () => {
     ];
 
     const selectedFolder = folders.find((f) => f.id === selectedFolderId);
+
+    useEffect(() => {
+        const options = {
+            threshold: 0.1,
+            rootMargin: "200px",
+        };
+        observerRef.current = new IntersectionObserver((entries) => {
+            const [entry] = entries;
+            if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
+                loadResources(selectedFolderId!, true);
+            }
+        }, options);
+
+        if (loadMoreRef.current) {
+            observerRef.current.observe(loadMoreRef.current);
+        }
+
+        return () => {
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+            }
+        };
+    }, [hasMore, debouncedKeyword, searchType, startDate, endDate, dateRange, selectedFolderId]);
+
+    const getLoadMoreText = () => {
+        if (resources.length === 0) {
+            return debouncedKeyword ? "没有找到匹配的收藏" : "暂无收藏";
+        }
+        return loading
+            ? "加载中..."
+            : hasMore
+            ? "向下滚动加载更多"
+            : "没有更多了";
+    };
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -178,7 +236,7 @@ export const Favorites = () => {
                             icon={<ReloadOutlined />}
                             onClick={() => {
                                 if (selectedFolderId) {
-                                    loadResources(selectedFolderId);
+                                    loadResources(selectedFolderId, false);
                                 }
                             }}
                         >
@@ -189,11 +247,7 @@ export const Favorites = () => {
 
                 <div className="flex-1 overflow-y-auto" ref={contentRef}>
                     <div className="p-6">
-                        {loading ? (
-                            <div className="text-center py-10">
-                                <Spin />
-                            </div>
-                        ) : (
+                        {resources.length > 0 ? (
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                                 {resources.map((item) => (
                                     <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -243,10 +297,14 @@ export const Favorites = () => {
                                     </div>
                                 ))}
                             </div>
+                        ) : (
+                            <Empty
+                                description={debouncedKeyword ? "没有找到匹配的收藏" : "暂无收藏"}
+                            />
                         )}
-                        {resources.length === 0 && !loading && (
-                            <Empty description="这个收藏夹是空的" />
-                        )}
+                        <div ref={loadMoreRef} className="text-center my-8">
+                            {resources.length > 0 && (loading ? <Spin /> : <span className="text-gray-500">{getLoadMoreText()}</span>)}
+                        </div>
                     </div>
                 </div>
             </div>
