@@ -6,7 +6,6 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { Pagination } from "../../components/Pagination";
 import { useDebounce } from "use-debounce";
 import {
   Select,
@@ -27,8 +26,6 @@ export const Favorites = () => {
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
     const [resources, setResources] = useState<FavoriteResource[]>([]);
     const [loading, setLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 50;
     const [keyword, setKeyword] = useState("");
     const [debouncedKeyword] = useDebounce(keyword, 500);
     const [searchType, setSearchType] = useState("all");
@@ -72,24 +69,12 @@ export const Favorites = () => {
                 endDate
             );
             setResources(list);
-            setCurrentPage(1);
         } catch (error) {
             console.error("加载收藏资源失败", error);
         } finally {
             setLoading(false);
         }
     };
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        // Scroll to top of content
-        if (contentRef.current) {
-            contentRef.current.scrollTop = 0;
-        }
-    };
-
-    const startIndex = (currentPage - 1) * pageSize;
-    const currentResources = resources.slice(startIndex, startIndex + pageSize);
 
     const searchTypeOptions = [
         { value: "all", label: "综合" },
@@ -98,6 +83,8 @@ export const Favorites = () => {
         { value: "bvid", label: "BV号" },
         { value: "id", label: "AV号" },
     ];
+
+    const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -128,9 +115,9 @@ export const Favorites = () => {
             {/* 右侧内容列表 */}
             <div className="flex-1 flex flex-col">
                 {/* 顶部固定筛选栏 */}
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
                     <Tag color="blue">
-                        {selectedFolderId ? `当前收藏夹：${folders.find((f) => f.id === selectedFolderId)?.title}` : "请选择收藏夹"}
+                        {selectedFolder ? `当前收藏夹：${selectedFolder.title}（${resources.length}）` : "请选择收藏夹"}
                     </Tag>
 
                     <Space wrap size="middle">
@@ -168,7 +155,7 @@ export const Favorites = () => {
                         {/* 搜索输入框 */}
                         <Input
                             type="text"
-                            style={{ width: 250 }}
+                            style={{ width: 300 }}
                             placeholder={
                                 searchType === "title"
                                     ? "搜索标题..."
@@ -207,16 +194,14 @@ export const Favorites = () => {
                                 <Spin />
                             </div>
                         ) : (
-                            <>
-                                {currentResources.length > 0 ? (
-                                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                                        {currentResources.map((item) => (
-                                            <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-white hover:shadow-md transition-shadow">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                                {resources.map((item) => (
+                                    <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
                                                 <a
                                                     href={`https://www.bilibili.com/video/${item.bvid}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="no-underline text-inherit flex flex-col h-full"
+                                                    className="no-underline text-inherit"
                                                 >
                                                     <div>
                                                         <div className="relative w-full aspect-video">
@@ -227,7 +212,7 @@ export const Favorites = () => {
                                                                 loading="lazy"
                                                             />
                                                         </div>
-                                                        <div className="p-3 flex-1 flex flex-col">
+                                                        <div className="p-2.5">
                                                             <div className="flex items-start justify-between gap-2">
                                                                 <h3
                                                                     className="m-0 text-sm leading-[1.4] h-10 overflow-hidden line-clamp-2 flex-1"
@@ -236,19 +221,18 @@ export const Favorites = () => {
                                                                     {item.title}
                                                                 </h3>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-gray-500 text-xs mt-2">
-                                                                <span
+                                                            <div className="flex justify-between items-center text-gray-500 text-xs mt-1">
+                                                                <a
+                                                                    href={`https://space.bilibili.com/${item.upper?.mid}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        window.open(
-                                                                            `https://space.bilibili.com/${item.upper?.mid}`,
-                                                                            "_blank"
-                                                                        );
                                                                     }}
-                                                                    className="hover:text-[#fb7299] transition-colors cursor-pointer truncate mr-2"
+                                                                    className="hover:text-[#fb7299] transition-colors no-underline text-inherit"
                                                                 >
                                                                     {item.upper?.name}
-                                                                </span>
+                                                                </a>
                                                                 <span className="shrink-0">
                                                                     {new Date((item.fav_time || item.ctime) * 1000).toLocaleDateString()}
                                                                 </span>
@@ -256,21 +240,12 @@ export const Favorites = () => {
                                                         </div>
                                                     </div>
                                                 </a>
-                                            </div>
-                                        ))}
                                     </div>
-                                ) : (
-                                    <Empty description="这个收藏夹是空的" />
-                                )}
-                                <div className="mt-8">
-                                    <Pagination
-                                        currentPage={currentPage}
-                                        totalItems={resources.length}
-                                        pageSize={pageSize}
-                                        onPageChange={handlePageChange}
-                                    />
-                                </div>
-                            </>
+                                ))}
+                            </div>
+                        )}
+                        {resources.length === 0 && !loading && (
+                            <Empty description="这个收藏夹是空的" />
                         )}
                     </div>
                 </div>

@@ -164,7 +164,7 @@ export const History: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-5 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
         <Tag color="blue">
           总记录数：{totalHistoryCount}
         </Tag>
@@ -214,16 +214,16 @@ export const History: React.FC = () => {
             {/* 搜索输入框 */}
             <Input
               type="text"
-              style={{ width: 250 }}
+              style={{ width: 300 }}
               placeholder={
                 searchType === "title"
                   ? "搜索标题..."
                   : searchType === "author"
                   ? "搜索作者..."
                   : searchType === "bvid"
-                  ? "搜索BV号..."
+                  ? "输入BV号（如: BV1GJ411x7h7）"
                   : searchType === "id"
-                  ? "搜索AV号..."
+                  ? "输入av号（如: av80433022）"
                   : "搜索标题/作者/BV号/AV号..."
               }
               value={keyword}
@@ -245,7 +245,7 @@ export const History: React.FC = () => {
         </Space>
       </div>
 
-      <div className="w-full px-6">
+      <div className="w-full p-6">
         {history.length > 0 ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
             {history.map((item) => (
@@ -265,7 +265,7 @@ export const History: React.FC = () => {
           />
         )}
         <div ref={loadMoreRef} className="text-center my-8">
-          {history.length > 0 && (isLoading ? <Spin /> : <span className="text-gray-500">{getLoadMoreText()}</span>)}
+          {isLoading ? <Spin /> : <span className="text-gray-500">{getLoadMoreText()}</span>}
         </div>
       </div>
     </div>
