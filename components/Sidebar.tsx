@@ -39,7 +39,7 @@ export const Sidebar = () => {
         className="border-r-0 h-full"
       />
       <p className="absolute bottom-2 left-2 text-gray-600 text-sm">
-        v2.0.2
+        v2.0.3
       </p>
     </div>
   );
