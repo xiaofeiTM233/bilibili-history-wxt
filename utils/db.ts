@@ -749,6 +749,26 @@ export const getFavResources = async (
 };
 
 
+export const getFavResourcesCount = async (folderId?: number): Promise<number> => {
+  const db = await openDB();
+  const tx = db.transaction("favResources", "readonly");
+  const store = tx.objectStore("favResources");
+  const index = store.index("folder_id");
+
+  return new Promise((resolve, reject) => {
+    const request = index.count(folderId);
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      console.error("获取收藏夹总数失败:", request.error);
+      reject(request.error);
+    };
+  });
+};
+
 export const deleteFavResources = async (ids: number[]): Promise<void> => {
   const db = await openDB();
   const tx = db.transaction("favResources", "readwrite");

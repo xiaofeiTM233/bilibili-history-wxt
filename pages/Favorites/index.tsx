@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getFavFolders, getFavResources } from "../../utils/db";
+import { getFavFolders, getFavResources, getFavResourcesCount } from "../../utils/db";
 import { FavoriteFolder, FavoriteResource } from "../../utils/types";
 import {
   FolderOutlined,
@@ -33,6 +33,7 @@ export const Favorites = () => {
     const [endDate, setEndDate] = useState("");
     const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [totalCount, setTotalCount] = useState(0);
 
     const contentRef = useRef<HTMLDivElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -46,10 +47,17 @@ export const Favorites = () => {
     useEffect(() => {
         if (selectedFolderId) {
             loadResources(selectedFolderId, false);
+            loadTotalCount();
         } else if (folders.length > 0) {
             setSelectedFolderId(folders[0].id);
         }
     }, [folders, selectedFolderId, debouncedKeyword, searchType, startDate, endDate, dateRange]);
+
+    const loadTotalCount = async () => {
+        if (!selectedFolderId) return;
+        const count = await getFavResourcesCount(selectedFolderId);
+        setTotalCount(count);
+    };
 
     const loadFolders = async () => {
         try {
@@ -175,7 +183,7 @@ export const Favorites = () => {
                 {/* 顶部固定筛选栏 */}
                 <div className="flex flex-wrap items-center justify-between gap-4 sticky top-0 bg-white py-4 px-10 z-10 border-b border-gray-200 shadow-sm">
                     <Tag color="blue">
-                        {selectedFolder ? `当前收藏夹：${selectedFolder.title}（${resources.length}）` : "请选择收藏夹"}
+                        {selectedFolder ? `当前收藏夹：${selectedFolder.title}（${totalCount}）` : "请选择收藏夹"}
                     </Tag>
 
                     <Space wrap size="middle">
