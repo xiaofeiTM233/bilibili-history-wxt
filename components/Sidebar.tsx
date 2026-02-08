@@ -1,8 +1,5 @@
-
-
 import { Menu } from "antd";
 import {
-  StarOutlined,
   HistoryOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
@@ -16,11 +13,6 @@ const items: MenuItem[] = [
     key: "/",
     icon: <HistoryOutlined />,
     label: "历史记录",
-  },
-  {
-    key: "/favorites",
-    icon: <StarOutlined />,
-    label: "收藏夹",
   },
   {
     key: "/settings",

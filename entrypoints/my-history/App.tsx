@@ -1,10 +1,8 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { History } from "../../pages/History";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
-import { Favorites } from "../../pages/Favorites";
+import { History } from "../../pages/History";
 import { ConfigProvider, App as AntApp, FloatButton } from "antd";
-import { VerticalAlignTopOutlined } from "@ant-design/icons";
 import zhCN from "antd/locale/zh_CN";
 
 const App = () => {
@@ -32,7 +30,6 @@ const App = () => {
                 <Routes>
                   <Route path="/" element={<History />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/favorites" element={<Favorites />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>
