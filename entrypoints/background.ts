@@ -213,9 +213,10 @@ export default defineBackground(() => {
       handleSyncHistory(message, sendResponse);
       return true; // 保持消息通道开放
     } else if (message.action === "getCookies") {
-      browser.cookies.getAll({ domain: "bilibili.com" }, (cookies) => {
-        sendResponse({ success: true, cookies });
-      });
+      // 使用 Promise 风格处理 cookies，避免回调签名导致的类型或运行时错误
+      browser.cookies.getAll({ domain: "bilibili.com" })
+        .then((cookies) => sendResponse({ success: true, cookies }))
+        .catch((error) => sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) }));
       return true;
     } else if (message.action === "deleteHistoryItem") {
       handleDeleteHistoryItem(message, sendResponse);
@@ -414,10 +415,15 @@ export default defineBackground(() => {
 
         // 4. 清理本地存在但线上已不存在的资源 (取消收藏的)
         try {
-          const localResources = await getFavResources(folder.id);
+          const localResourcesResult = await getFavResources(folder.id);
+          // getFavResources 可能返回数组，也可能返回 { items: FavoriteResource[], hasMore: boolean }
+          const localResources = Array.isArray(localResourcesResult)
+            ? localResourcesResult
+            : (localResourcesResult && (localResourcesResult as any).items) || [];
+
           const idsToDelete = localResources
-            .filter(item => !onlineResourceIds.has(item.id))
-            .map(item => item.id);
+            .filter((item: any) => !onlineResourceIds.has(item.id))
+            .map((item: any) => item.id);
 
           if (idsToDelete.length > 0) {
             await deleteFavResources(idsToDelete);

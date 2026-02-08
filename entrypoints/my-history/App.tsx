@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "../../components/Sidebar";
 import Settings from "../../pages/Settings";
 import { History } from "../../pages/History";
-import { ConfigProvider, App as AntApp, FloatButton } from "antd";
+import { ConfigProvider, App as AntApp } from "antd";
 import zhCN from "antd/locale/zh_CN";
 
 const App = () => {
@@ -26,16 +26,11 @@ const App = () => {
             <Sidebar />
             {/* 主内容区域 */}
             <div className="ml-40 w-full">
-              <div>
-                <Routes>
-                  <Route path="/" element={<History />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
-              <FloatButton.BackTop
-                type="primary"
-              />
+              <Routes>
+                <Route path="/" element={<History />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </div>
           </div>
         </AntApp>

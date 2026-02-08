@@ -8,7 +8,7 @@ import "dayjs/locale/zh-cn";
 import { FilterBar } from "../components/FilterBar";
 import { SideMenu } from "../components/SideMenu";
 import { ContentGrid } from "../components/ContentGrid";
-import { Splitter } from "antd";
+import { Splitter, FloatButton } from "antd";
 dayjs.locale("zh-cn");
 
 type ViewType = "history" | "favorites";
@@ -196,20 +196,17 @@ export const History = () => {
     setHistory((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const contentRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!contentRef.current) return;
-
-    const contentRefElement = contentRef.current;
-    const loadMoreElement = contentRefElement?.querySelector('.my-8') as HTMLElement;
+    const loadMoreElement = contentRef.current?.getLoadMoreElement?.() as HTMLElement;
 
     if (!loadMoreElement) return;
 
     const options = {
       threshold: 0.1,
       rootMargin: "200px",
-      root: contentRefElement,
+      root: null,
     };
     observerRef.current = new IntersectionObserver((entries) => {
       const [entry] = entries;
@@ -299,6 +296,20 @@ export const History = () => {
           </Splitter>
         </div>
       </div>
+      <FloatButton.BackTop
+        type="primary"
+        target={() => {
+          const loadMoreEl: HTMLElement | undefined = contentRef.current?.getLoadMoreElement?.();
+          if (!loadMoreEl) return document.body as HTMLElement;
+          let el: HTMLElement | null = loadMoreEl;
+          while (el && el !== document.body) {
+            const style = window.getComputedStyle(el);
+            if (style.overflowY === 'auto' || style.overflowY === 'scroll') return el;
+            el = el.parentElement;
+          }
+          return document.body as HTMLElement;
+        }}
+      />
     </div>
   );
 };

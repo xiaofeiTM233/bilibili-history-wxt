@@ -2,7 +2,7 @@ import { Spin, Empty } from "antd";
 import { Card } from "./Card";
 import { HistoryItem as HistoryItemType } from "../utils/types";
 import { FavoriteResource } from "../utils/types";
-import { useRef, forwardRef } from "react";
+import { useRef, forwardRef, useImperativeHandle } from "react";
 
 interface ContentGridProps {
   viewType: "favorites" | "history";
@@ -16,7 +16,7 @@ interface ContentGridProps {
   onLoadHistoryTotalCount: () => void;
 }
 
-export const ContentGrid = forwardRef<HTMLDivElement, ContentGridProps>(({
+export const ContentGrid = forwardRef<any, ContentGridProps>(({
   viewType,
   history,
   resources,
@@ -28,6 +28,10 @@ export const ContentGrid = forwardRef<HTMLDivElement, ContentGridProps>(({
   onLoadHistoryTotalCount,
 }, ref) => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    getLoadMoreElement: () => loadMoreRef.current,
+  }));
 
   const getLoadMoreText = () => {
     if (viewType === "history") {
@@ -44,7 +48,7 @@ export const ContentGrid = forwardRef<HTMLDivElement, ContentGridProps>(({
   };
 
   return (
-    <div ref={ref} className="flex-1 overflow-y-auto">
+    <div ref={ref}>
       <div className="p-6">
         {viewType === "history" ? (
           history.length > 0 ? (
