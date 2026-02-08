@@ -8,6 +8,7 @@ import "dayjs/locale/zh-cn";
 import { FilterBar } from "../components/FilterBar";
 import { SideMenu } from "../components/SideMenu";
 import { ContentGrid } from "../components/ContentGrid";
+import { Splitter } from "antd";
 dayjs.locale("zh-cn");
 
 type ViewType = "history" | "favorites";
@@ -31,6 +32,10 @@ export const History = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedType, setSelectedType] = useState("all");
   const [date, setDate] = useState("");
+  const [splitterSize, setSplitterSize] = useState<number>(() => {
+    const saved = localStorage.getItem('splitter-size');
+    return saved ? Number(saved) : 0;
+  });
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isLoadingRef = useRef<boolean>(false);
@@ -55,6 +60,10 @@ export const History = () => {
   useEffect(() => {
     loadFolders();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('splitter-size', splitterSize.toString());
+  }, [splitterSize]);
 
   useEffect(() => {
     if (viewType === "favorites") {
@@ -266,18 +275,29 @@ export const History = () => {
           searchTypeOptions={searchTypeOptions}
         />
 
-        <ContentGrid
-          ref={contentRef}
-          viewType={viewType}
-          history={history}
-          resources={resources}
-          loading={loading}
-          hasMore={hasMore}
-          keyword={keyword}
-          debouncedKeyword={debouncedKeyword}
-          onHistoryDelete={handleHistoryDelete}
-          onLoadHistoryTotalCount={loadHistoryTotalCount}
-        />
+        <div className="flex-1 overflow-hidden">
+          <Splitter style={{ height: '100%' }} onResize={(sizes: number[]) => setSplitterSize(sizes[0])}>
+            <Splitter.Panel collapsible defaultSize={splitterSize} min="1%" max="80%">
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <span></span>
+              </div>
+            </Splitter.Panel>
+            <Splitter.Panel>
+              <ContentGrid
+                ref={contentRef}
+                viewType={viewType}
+                history={history}
+                resources={resources}
+                loading={loading}
+                hasMore={hasMore}
+                keyword={keyword}
+                debouncedKeyword={debouncedKeyword}
+                onHistoryDelete={handleHistoryDelete}
+                onLoadHistoryTotalCount={loadHistoryTotalCount}
+              />
+            </Splitter.Panel>
+          </Splitter>
+        </div>
       </div>
     </div>
   );
