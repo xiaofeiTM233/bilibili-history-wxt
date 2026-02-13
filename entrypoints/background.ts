@@ -342,17 +342,30 @@ export default defineBackground(() => {
 
       // 1. 获取用户信息 (MID)
       const navRes = await fetch("https://api.bilibili.com/x/web-interface/nav", {
-        headers: { Cookie: `SESSDATA=${SESSDATA}` },
+        headers: {
+          Cookie: `SESSDATA=${SESSDATA}`,
+          'referer': `https://t.bilibili.com/`,
+          'origin': 'https://t.bilibili.com',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-site'
+        }
       });
       const navData = await navRes.json();
       if (navData.code !== 0) throw new Error("获取用户信息失败");
       const mid = navData.data.mid;
 
       // 2. 获取收藏夹列表
-      const folderRes = await fetch(
-        `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`,
-        { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
-      );
+      const folderRes = await fetch(`https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}&web_location=0.0`, {
+        headers: {
+          Cookie: `SESSDATA=${SESSDATA}`,
+          'referer': `https://space.bilibili.com/${mid}/favlist`,
+          'origin': 'https://space.bilibili.com',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-site'
+        }
+      });
       const folderData = await folderRes.json();
       if (folderData.code !== 0) throw new Error("获取收藏夹失败");
 
@@ -377,10 +390,16 @@ export default defineBackground(() => {
         let hasMore = true;
         let page = 1;
         while (hasMore) {
-          const res = await fetch(
-            `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=20`,
-            { headers: { Cookie: `SESSDATA=${SESSDATA}` } }
-          );
+          const res = await fetch(`https://api.bilibili.com/x/v3/fav/resource/list?media_id=${folder.id}&pn=${page}&ps=36&keyword=&order=mtime&type=0&tid=0&platform=web&web_location=0.0`, {
+            headers: {
+              Cookie: `SESSDATA=${SESSDATA}`,
+              'referer': `https://space.bilibili.com/${mid}/favlist?fid=${folder.id}&ftype=create`,
+              'origin': 'https://space.bilibili.com',
+              'sec-fetch-dest': 'empty',
+              'sec-fetch-mode': 'cors',
+              'sec-fetch-site': 'same-site'
+            }
+          });
           const data = await res.json();
           if (data.code !== 0) {
             console.error(`获取收藏夹 ${folder.title} 资源失败:`, data.message);
