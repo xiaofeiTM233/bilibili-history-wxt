@@ -5,7 +5,6 @@ import {
   IS_SYNC_DELETE,
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
-  FAV_SYNC_INTERVAL,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -29,7 +28,6 @@ const Settings = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
   const [syncInterval, setSyncInterval] = useState(1);
-  const [favSyncInterval, setFavSyncInterval] = useState(1440);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -39,12 +37,10 @@ const Settings = () => {
         true
       );
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
-      const storedFavSyncInterval = await getStorageValue(FAV_SYNC_INTERVAL, 1440);
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
       setSyncInterval(storedSyncInterval);
-      setFavSyncInterval(storedFavSyncInterval);
     };
     loadSettings();
   }, []);
@@ -63,13 +59,6 @@ const Settings = () => {
     if (newInterval >= 1) {
       setSyncInterval(newInterval);
       await setStorageValue(SYNC_INTERVAL, newInterval);
-    }
-  };
-
-  const handleFavSyncIntervalChange = async (newInterval: number) => {
-    if (newInterval >= 10) {
-      setFavSyncInterval(newInterval);
-      await setStorageValue(FAV_SYNC_INTERVAL, newInterval);
     }
   };
 
@@ -284,29 +273,6 @@ const Settings = () => {
                 max={999}
                 value={syncInterval}
                 onChange={(value) => handleSyncIntervalChange(value || 1)}
-                style={{ width: 200 }}
-              />
-            </Space>
-          </div>
-
-          <Divider />
-
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium text-pink-500">
-                自动同步收藏夹时间间隔
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为10</p>
-            </div>
-            <Space size="large">
-              <span className="text-gray-600">间隔时间：</span>
-              <InputNumber
-                mode="spinner"
-                min={10}
-                max={9999}
-                step={10}
-                value={favSyncInterval}
-                onChange={(value) => handleFavSyncIntervalChange(value || 10)}
                 style={{ width: 200 }}
               />
             </Space>

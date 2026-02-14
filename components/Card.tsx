@@ -1,15 +1,14 @@
 import { HistoryItem as HistoryItemType } from "../utils/types";
-import { FavoriteResource } from "../utils/types";
 import { Trash2 } from "lucide-react";
 import { message } from "antd";
 import { IS_SYNC_DELETE } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
-import { deleteHistoryItem, deleteFavResources } from "../utils/db";
+import { deleteHistoryItem } from "../utils/db";
 import { getTypeTag } from "../utils/common";
 
 interface CardProps {
-  item: HistoryItemType | FavoriteResource;
-  itemType: "history" | "favorite";
+  item: HistoryItemType;
+  itemType: "history";
   onDelete?: () => void;
 }
 
@@ -62,25 +61,19 @@ const deleteBilibiliHistory = async (
 };
 
 export const Card: React.FC<CardProps> = ({ item, itemType, onDelete }) => {
-  const isHistory = itemType === "history";
-  const historyItem = isHistory ? item as HistoryItemType : null;
-  const favoriteItem = !isHistory ? item as FavoriteResource : null;
+  const historyItem = item as HistoryItemType;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     try {
-      if (isHistory && historyItem) {
-        const isSyncDelete = await getStorageValue(IS_SYNC_DELETE, true);
-        if (isSyncDelete) {
-          await deleteBilibiliHistory(historyItem.business, historyItem.id);
-          console.log("删除B站服务器上的历史记录成功");
-        }
-        await deleteHistoryItem(historyItem.id);
-      } else if (favoriteItem) {
-        await deleteFavResources([favoriteItem.id]);
+      const isSyncDelete = await getStorageValue(IS_SYNC_DELETE, true);
+      if (isSyncDelete) {
+        await deleteBilibiliHistory(historyItem.business, historyItem.id);
+        console.log("删除B站服务器上的历史记录成功");
       }
+      await deleteHistoryItem(historyItem.id);
       onDelete?.();
     } catch (error) {
       console.error("删除失败:", error);
@@ -88,13 +81,13 @@ export const Card: React.FC<CardProps> = ({ item, itemType, onDelete }) => {
     }
   };
 
-  const title = isHistory ? historyItem!.title : favoriteItem!.title;
-  const cover = isHistory ? historyItem!.cover : favoriteItem!.cover.replace("http:", "https:");
-  const authorName = isHistory ? historyItem!.author_name : favoriteItem!.upper?.name;
-  const authorMid = isHistory ? historyItem!.author_mid : favoriteItem!.upper?.mid;
-  const bvid = isHistory ? historyItem!.bvid : favoriteItem!.bvid;
-  const viewTime = isHistory ? historyItem!.view_at : (favoriteItem!.fav_time || favoriteItem!.ctime);
-  const business = isHistory ? historyItem!.business : null;
+  const title = historyItem.title;
+  const cover = historyItem.cover;
+  const authorName = historyItem.author_name;
+  const authorMid = historyItem.author_mid;
+  const bvid = historyItem.bvid;
+  const viewTime = historyItem.view_at;
+  const business = historyItem.business;
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -112,7 +105,7 @@ export const Card: React.FC<CardProps> = ({ item, itemType, onDelete }) => {
               className="w-full h-full object-cover"
               loading="lazy"
             />
-            {isHistory && business && getTypeTag(business) !== "视频" && (
+            {business && getTypeTag(business) !== "视频" && (
               <span className="absolute bottom-2 right-2 px-2 py-1 rounded text-xs text-white bg-[#fb7299]">
                 {getTypeTag(business)}
               </span>
@@ -123,14 +116,12 @@ export const Card: React.FC<CardProps> = ({ item, itemType, onDelete }) => {
               <h3 className="m-0 text-sm leading-[1.4] h-10 overflow-hidden line-clamp-2 flex-1">
                 {title}
               </h3>
-              {isHistory && (
-                <button
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors shrink-0"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="w-4 h-4 text-gray-500" />
-                </button>
-              )}
+              <button
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+                onClick={handleDelete}
+              >
+                <Trash2 className="w-4 h-4 text-gray-500" />
+              </button>
             </div>
             <div className="flex justify-between items-center text-gray-500 text-xs mt-1">
               <a

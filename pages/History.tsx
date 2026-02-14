@@ -1,23 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { getFavFolders, getFavResources, getFavResourcesCount, getHistory, getTotalHistoryCount } from "../utils/db";
-import { FavoriteFolder, FavoriteResource, HistoryItem as HistoryItemType } from "../utils/types";
+import { getHistory, getTotalHistoryCount } from "../utils/db";
+import { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
 import { FilterBar } from "../components/FilterBar";
-import { SideMenu } from "../components/SideMenu";
 import { ContentGrid } from "../components/ContentGrid";
 import { Splitter, FloatButton } from "antd";
 dayjs.locale("zh-cn");
 
-type ViewType = "history" | "favorites";
-
 export const History = () => {
-  const [folders, setFolders] = useState<FavoriteFolder[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [viewType, setViewType] = useState<ViewType>("history");
-  const [resources, setResources] = useState<FavoriteResource[]>([]);
   const [history, setHistory] = useState<HistoryItemType[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -58,54 +51,36 @@ export const History = () => {
   ];
 
   useEffect(() => {
-    loadFolders();
-  }, []);
-
-  useEffect(() => {
     localStorage.setItem('splitter-size', splitterSize.toString());
   }, [splitterSize]);
 
   useEffect(() => {
-    if (viewType === "favorites") {
-      if (selectedFolderId) {
-        loadResources(selectedFolderId, false);
-        loadTotalCount();
-      } else if (folders.length > 0) {
-        setSelectedFolderId(folders[0].id);
-      }
-    } else {
-      loadHistory(false);
-      loadHistoryTotalCount();
-    }
-  }, [folders, selectedFolderId, viewType, debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate, dateRange]);
-
-  const loadTotalCount = async () => {
-    if (!selectedFolderId) return;
-    const count = await getFavResourcesCount(selectedFolderId);
-    setTotalCount(count);
-  };
+    // 搜索条件改变时重置历史记录并重新加载
+    setHistory([]);
+    setHasMore(true);
+    loadHistory(true);
+    loadHistoryTotalCount();
+  }, [debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate, dateRange]);
 
   const loadHistoryTotalCount = async () => {
     const count = await getTotalHistoryCount();
     setTotalCount(count);
   };
 
-  const loadHistory = async (isAppend: boolean = false) => {
+  const loadHistory = async (reset: boolean = false) => {
     if (isLoadingRef.current) return;
 
     try {
       setLoading(true);
       isLoadingRef.current = true;
 
-      const lastViewTime = isAppend
-        ? await new Promise<number | "">((resolve) => {
-            setHistory((currentHistory) => {
-              const lastTime = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].view_at : "";
-              resolve(lastTime);
-              return currentHistory;
-            });
-          })
-        : "";
+      const lastViewTime = reset ? "" : await new Promise<number | "">((resolve) => {
+        setHistory((currentHistory) => {
+          const lastTime = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].view_at : "";
+          resolve(lastTime);
+          return currentHistory;
+        });
+      });
 
       const { items, hasMore } = await getHistory(
         lastViewTime,
@@ -119,53 +94,14 @@ export const History = () => {
         endDate
       );
 
-      if (isAppend) {
-        setHistory((prev) => [...prev, ...items]);
-      } else {
+      if (reset) {
         setHistory(items);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setHistory((prev) => [...prev, ...items]);
       }
-
       setHasMore(hasMore);
     } catch (error) {
       console.error("Failed to load history:", error);
-    } finally {
-      setLoading(false);
-      isLoadingRef.current = false;
-    }
-  };
-
-  const loadFolders = async () => {
-    try {
-      const list = await getFavFolders();
-      const sortedList = list.sort((a, b) => (a.index || 0) - (b.index || 0));
-      setFolders(sortedList);
-    } catch (error) {
-      console.error("加载收藏夹失败", error);
-    }
-  };
-
-  const loadResources = async (folderId: number, isAppend: boolean = false) => {
-    if (isLoadingRef.current) return;
-
-    try {
-      setLoading(true);
-      isLoadingRef.current = true;
-
-      const lastItem = isAppend && resources.length > 0 ? resources[resources.length - 1] : undefined;
-
-      const result = await getFavResources(folderId, debouncedKeyword, searchType, startDate, endDate, lastItem);
-
-      if (isAppend) {
-        setResources((prev) => [...prev, ...result.items]);
-      } else {
-        setResources(result.items);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-
-      setHasMore(result.hasMore);
-    } catch (error) {
-      console.error("加载收藏资源失败", error);
     } finally {
       setLoading(false);
       isLoadingRef.current = false;
@@ -182,14 +118,15 @@ export const History = () => {
     setDateRange(null);
   };
 
+  const handleDateRangeChange = (dates: [Dayjs, Dayjs] | null, start: string, end: string) => {
+    setDateRange(dates);
+    setStartDate(start);
+    setEndDate(end);
+  };
+
   const handleRefresh = () => {
-    if (viewType === "history") {
-      loadHistory(false);
-      loadHistoryTotalCount();
-    } else if (selectedFolderId) {
-      loadResources(selectedFolderId, false);
-      loadTotalCount();
-    }
+    loadHistory();
+    loadHistoryTotalCount();
   };
 
   const handleHistoryDelete = (id: number) => {
@@ -211,11 +148,7 @@ export const History = () => {
     observerRef.current = new IntersectionObserver((entries) => {
       const [entry] = entries;
       if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
-        if (viewType === "history") {
-          loadHistory(true);
-        } else if (selectedFolderId) {
-          loadResources(selectedFolderId, true);
-        }
+        loadHistory();
       }
     }, options);
 
@@ -226,37 +159,18 @@ export const History = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate, dateRange, selectedFolderId, viewType]);
-
-  const selectedFolder = folders.find((f) => f.id === selectedFolderId);
+  }, [hasMore, debouncedKeyword, debouncedAuthorKeyword, date, selectedType, searchType, startDate, endDate, dateRange]);
 
   const getFilterTitle = () => {
-    if (viewType === "history") {
-      return `历史记录（${totalCount}）`;
-    }
-    if (selectedFolder) {
-      return `${selectedFolder.title}（${totalCount}）`;
-    }
-    return "请选择收藏夹";
+    return `历史记录（${totalCount}）`;
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <SideMenu
-        viewType={viewType}
-        selectedFolderId={selectedFolderId}
-        folders={folders}
-        totalCount={totalCount}
-        onViewTypeChange={setViewType}
-        onFolderChange={(folderId) => {
-          setSelectedFolderId(folderId);
-        }}
-      />
-
       <div className="flex-1 flex flex-col">
         <FilterBar
           title={getFilterTitle()}
-          showTypeSelect={viewType === "history"}
+          showTypeSelect={true}
           selectedType={selectedType}
           onTypeChange={setSelectedType}
           typeOptions={typeOptions}
@@ -267,7 +181,7 @@ export const History = () => {
           startDate={startDate}
           endDate={endDate}
           dateRange={dateRange}
-          onDateRangeChange={setDateRange}
+          onDateRangeChange={handleDateRangeChange}
           onRefresh={handleRefresh}
           searchTypeOptions={searchTypeOptions}
         />
@@ -282,9 +196,7 @@ export const History = () => {
             <Splitter.Panel>
               <ContentGrid
                 ref={contentRef}
-                viewType={viewType}
                 history={history}
-                resources={resources}
                 loading={loading}
                 hasMore={hasMore}
                 keyword={keyword}

@@ -3,7 +3,6 @@ import "./App.css";
 import { Button, Checkbox, Space } from "antd";
 function App() {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSyncingFav, setIsSyncingFav] = useState(false);
   const [status, setStatus] = useState("");
   const [isFullSync, setIsFullSync] = useState(false);
 
@@ -43,27 +42,6 @@ function App() {
     }
   };
 
-  const handleSyncFav = async () => {
-    setIsSyncingFav(true);
-    setStatus("正在同步收藏夹...");
-
-    try {
-      const response = await browser.runtime.sendMessage({
-        action: "syncFavorites",
-      });
-
-      if (response && response.success) {
-        setStatus(response.message);
-      } else {
-        setStatus("同步收藏夹失败：" + (response ? response.error : "未知错误"));
-      }
-    } catch (error) {
-      setStatus("同步收藏夹失败：" + (error instanceof Error ? error.message : "未知错误"));
-    } finally {
-      setIsSyncingFav(false);
-    }
-  };
-
   return (
     <>
       <div className="flex flex-col gap-2.5">
@@ -90,16 +68,6 @@ function App() {
           loading={isSyncing}
         >
           {isSyncing ? "同步中..." : "立即同步"}
-        </Button>
-        <Button
-          type="primary"
-          block
-          onClick={handleSyncFav}
-          disabled={isSyncing || isSyncingFav}
-          loading={isSyncingFav}
-          style={{ backgroundColor: "#fb7299" }}
-        >
-          {isSyncingFav ? "收藏夹同步中..." : "同步收藏夹"}
         </Button>
         <Space align="center">
           <Checkbox
