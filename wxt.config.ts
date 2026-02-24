@@ -12,6 +12,7 @@ export default defineConfig({
       "cookies",
       "alarms",
       "declarativeNetRequest",
+      "identity",
     ],
     declarative_net_request: {
       rule_resources: [
