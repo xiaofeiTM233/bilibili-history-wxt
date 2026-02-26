@@ -8,6 +8,7 @@ import {
   CLOUD_SYNC_CONFIG,
   LAST_CLOUD_UPLOAD,
   LAST_CLOUD_DOWNLOAD,
+  EXPORT_FORMAT,
 } from "../utils/constants";
 import {
   exportHistoryToCSV,
@@ -34,6 +35,17 @@ const Settings = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
   const [syncInterval, setSyncInterval] = useState(1);
+
+  // 从存储加载导出格式
+  useEffect(() => {
+    const loadExportFormat = async () => {
+      const storedExportFormat = await getStorageValue<("csv" | "json") | undefined>(EXPORT_FORMAT);
+      if (storedExportFormat) {
+        setExportFormat(storedExportFormat);
+      }
+    };
+    loadExportFormat();
+  }, []);
 
   // 云同步相关状态
   const [cloudConfig, setCloudConfig] = useState<CloudSyncConfig>({
@@ -205,6 +217,11 @@ const Settings = () => {
     setCloudConfig((prev) => ({ ...prev, ...updates }));
   };
 
+  const handleCloudConfigChange = async (updates: Partial<CloudSyncConfig>) => {
+    await setStorageValue(CLOUD_SYNC_CONFIG, { ...cloudConfig, ...updates });
+    setCloudConfig((prev) => ({ ...prev, ...updates }));
+  };
+
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
     try {
@@ -282,7 +299,7 @@ const Settings = () => {
         <Input
           placeholder="https://your-webdav-server.com/dav"
           value={cloudConfig.serverUrl || ""}
-          onChange={(e) => updateCloudConfig({ serverUrl: e.target.value })}
+          onChange={(e) => handleCloudConfigChange({ serverUrl: e.target.value })}
         />
       </div>
       <div>
@@ -290,7 +307,7 @@ const Settings = () => {
         <Input
           placeholder="用户名"
           value={cloudConfig.username || ""}
-          onChange={(e) => updateCloudConfig({ username: e.target.value })}
+          onChange={(e) => handleCloudConfigChange({ username: e.target.value })}
         />
       </div>
       <div>
@@ -298,7 +315,7 @@ const Settings = () => {
         <Input.Password
           placeholder="密码"
           value={cloudConfig.password || ""}
-          onChange={(e) => updateCloudConfig({ password: e.target.value })}
+          onChange={(e) => handleCloudConfigChange({ password: e.target.value })}
         />
       </div>
     </div>
@@ -528,7 +545,10 @@ const Settings = () => {
                 <Space size="large">
                   <Select
                     value={exportFormat}
-                    onChange={(value) => setExportFormat(value as "csv" | "json")}
+                    onChange={(value) => {
+                      setExportFormat(value as "csv" | "json");
+                      setStorageValue(EXPORT_FORMAT, value as "csv" | "json");
+                    }}
                     disabled={isExporting}
                     style={{ width: 100 }}
                     options={[
@@ -633,7 +653,7 @@ const Settings = () => {
                 </div>
                 <Switch
                   checked={cloudConfig.enabled}
-                  onChange={(checked) => updateCloudConfig({ enabled: checked })}
+                  onChange={(checked) => handleCloudConfigChange({ enabled: checked })}
                 />
               </div>
 
@@ -648,7 +668,7 @@ const Settings = () => {
                     </div>
                     <Select
                       value={cloudConfig.type}
-                      onChange={(value) => updateCloudConfig({ type: value as CloudSyncType })}
+                      onChange={(value) => handleCloudConfigChange({ type: value as CloudSyncType })}
                       style={{ width: 150 }}
                       options={[
                         { label: "WebDAV", value: "webdav" },
@@ -674,7 +694,7 @@ const Settings = () => {
                     </div>
                     <Select
                       value={cloudConfig.syncDirection}
-                      onChange={(value) => updateCloudConfig({ syncDirection: value as "upload" | "download" | "bidirectional" })}
+                      onChange={(value) => handleCloudConfigChange({ syncDirection: value as "upload" | "download" | "bidirectional" })}
                       style={{ width: 150 }}
                       options={[
                         { label: "上传到云端", value: "upload" },
@@ -693,7 +713,7 @@ const Settings = () => {
                     </div>
                     <Switch
                       checked={cloudConfig.autoSync}
-                      onChange={(checked) => updateCloudConfig({ autoSync: checked })}
+                      onChange={(checked) => handleCloudConfigChange({ autoSync: checked })}
                     />
                   </div>
 
@@ -712,7 +732,7 @@ const Settings = () => {
                           min={5}
                           max={1440}
                           value={cloudConfig.syncInterval}
-                          onChange={(value) => updateCloudConfig({ syncInterval: value || 60 })}
+                          onChange={(value) => handleCloudConfigChange({ syncInterval: value || 60 })}
                           style={{ width: 200 }}
                         />
                       </Space>

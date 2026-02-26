@@ -14,3 +14,6 @@ export const CLOUD_SYNC_INTERVAL = "cloudSyncInterval";
 export const CLOUD_SYNC_TIME_REMAIN = "cloudSyncTimeRemain";
 export const LAST_CLOUD_UPLOAD = "lastCloudUpload";
 export const LAST_CLOUD_DOWNLOAD = "lastCloudDownload";
+
+// 导出格式常量
+export const EXPORT_FORMAT = "exportFormat";
