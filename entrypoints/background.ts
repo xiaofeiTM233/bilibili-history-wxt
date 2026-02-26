@@ -9,7 +9,7 @@ import {
 } from "../utils/constants";
 import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
-import { uploadToCloud, downloadFromCloud, testCloudConnection, oneDriveAuth } from "../utils/cloudSync";
+import { uploadToCloud, downloadFromCloud, testCloudConnection, oneDriveAuth, ensureValidOneDriveToken } from "../utils/cloudSync";
 import { CloudSyncConfig, CloudSyncResult } from "../utils/types";
 
 export default defineBackground(() => {
@@ -25,6 +25,25 @@ export default defineBackground(() => {
     // 首次安装时打开历史记录页面
     if (details.reason === "install") {
       browser.tabs.create({ url: "/my-history.html" });
+    }
+  });
+
+  // 扩展启动时检查并刷新 OneDrive Token
+  browser.runtime.onStartup.addListener(async () => {
+    console.log("扩展启动，检查 OneDrive Token 状态");
+    try {
+      const config = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
+      if (config && config.type === "onedrive" && config.token && config.refreshToken) {
+        console.log("检查 OneDrive Token 是否需要刷新");
+        const token = await ensureValidOneDriveToken(config);
+        if (!token) {
+          console.warn("OneDrive Token 已过期，需要重新授权");
+        } else {
+          console.log("OneDrive Token 刷新成功");
+        }
+      }
+    } catch (error) {
+      console.error("启动时检查 Token 失败:", error);
     }
   });
 
@@ -323,6 +342,7 @@ export default defineBackground(() => {
           syncDirection: "upload" as const,
         };
         config.token = result.data.token;
+        config.refreshToken = result.data.refreshToken;
         config.tokenExpires = Date.now() + (result.data.expiresIn - 300) * 1000;
         await setStorageValue(CLOUD_SYNC_CONFIG, config);
         sendResponse({ success: true, message: "授权成功" });
@@ -367,6 +387,54 @@ export default defineBackground(() => {
     }
   };
 
+  // 处理手动刷新 OneDrive Token 的消息
+  const handleRefreshOneDriveToken = async (
+    _message: any,
+    sendResponse: (response: any) => void
+  ) => {
+    try {
+      // 获取现有配置
+      const config = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
+      if (!config || config.type !== "onedrive" || !config.refreshToken) {
+        sendResponse({ success: false, message: "未找到有效的 OneDrive 配置或刷新令牌" });
+        return;
+      }
+
+      console.log("手动刷新 OneDrive Token");
+      const result = await refreshOneDriveToken(config.refreshToken);
+      
+      if (result.success && result.data) {
+        // 更新配置
+        const updatedConfig: CloudSyncConfig = {
+          ...config,
+          token: result.data.token,
+          refreshToken: result.data.refreshToken,
+          tokenExpires: Date.now() + result.data.expiresIn * 1000,
+        };
+        await setStorageValue(CLOUD_SYNC_CONFIG, updatedConfig);
+        
+        console.log("OneDrive Token 手动刷新成功");
+        sendResponse({
+          success: true,
+          message: "令牌刷新成功",
+          tokenExpires: updatedConfig.tokenExpires,
+        });
+      } else {
+        console.error("OneDrive Token 手动刷新失败:", result.message);
+        sendResponse({
+          success: false,
+          message: result.message,
+        });
+      }
+    } catch (error) {
+      console.error("手动刷新 OneDrive Token 异常:", error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : "刷新令牌失败",
+      });
+    }
+  };
+
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === "syncHistory") {
       handleSyncHistory(message, sendResponse);
@@ -400,6 +468,9 @@ export default defineBackground(() => {
       return true;
     } else if (message.action === "revokeOneDriveAuth") {
       handleRevokeOneDriveAuth(message, sendResponse);
+      return true;
+    } else if (message.action === "refreshOneDriveToken") {
+      handleRefreshOneDriveToken(message, sendResponse);
       return true;
     }
   });

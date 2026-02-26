@@ -47,6 +47,11 @@ const Settings = () => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudUpload, setLastCloudUpload] = useState<number | null>(null);
   const [lastCloudDownload, setLastCloudDownload] = useState<number | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<{ isValid: boolean; expiresAt: number | null | undefined; isRefreshing: boolean }>({
+    isValid: false,
+    expiresAt: null,
+    isRefreshing: false,
+  });
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -65,6 +70,15 @@ const Settings = () => {
       setSyncInterval(storedSyncInterval);
       if (storedCloudConfig) {
         setCloudConfig(storedCloudConfig);
+        // 检查 OneDrive Token 状态
+        if (storedCloudConfig.type === "onedrive" && storedCloudConfig.token) {
+          const isTokenValid = storedCloudConfig.tokenExpires !== undefined && storedCloudConfig.tokenExpires > Date.now();
+          setTokenStatus({
+            isValid: isTokenValid,
+            expiresAt: isTokenValid ? (storedCloudConfig.tokenExpires || null) : null,
+            isRefreshing: false,
+          });
+        }
       }
       setLastCloudUpload(storedLastUpload);
       setLastCloudDownload(storedLastDownload);
@@ -317,7 +331,44 @@ const Settings = () => {
       }
     };
 
-    const isAuthorized = cloudConfig.token && cloudConfig.tokenExpires && cloudConfig.tokenExpires > Date.now();
+    const isAuthorized = cloudConfig.token && cloudConfig.tokenExpires != null && cloudConfig.tokenExpires > Date.now();
+    const hasRefreshToken = cloudConfig.refreshToken != null && cloudConfig.refreshToken !== "";
+
+    const handleOneDriveRefresh = async () => {
+      if (!isAuthorized) {
+        message.warning("请先完成 OneDrive 授权");
+        return;
+      }
+      
+      setTokenStatus(prev => ({ ...prev, isRefreshing: true }));
+      try {
+        const response = await browser.runtime.sendMessage({
+          action: "refreshOneDriveToken",
+        });
+        if (response.success) {
+          message.success("令牌刷新成功！");
+          setTokenStatus(prev => ({
+            ...prev,
+            isValid: true,
+            expiresAt: response.tokenExpires,
+            isRefreshing: false,
+          }));
+          // 重新加载配置
+          const configResponse = await browser.runtime.sendMessage({
+            action: "getCloudConfig",
+          });
+          if (configResponse.success && configResponse.config) {
+            setCloudConfig(configResponse.config);
+          }
+        } else {
+          message.error(response.message || "刷新失败");
+          setTokenStatus(prev => ({ ...prev, isRefreshing: false }));
+        }
+      } catch (error) {
+        message.error("刷新失败");
+        setTokenStatus(prev => ({ ...prev, isRefreshing: false }));
+      }
+    };
 
     const handleRevokeAuth = async () => {
       try {
@@ -349,14 +400,24 @@ const Settings = () => {
       <div className="space-y-4">
         {isAuthorized ? (
           <Alert
-            message="OneDrive 已授权"
-            description={`授权状态有效，过期时间：${dayjs(cloudConfig.tokenExpires).format("YYYY-MM-DD HH:mm:ss")}`}
+            title="OneDrive 已授权"
+            description={
+              <div>
+                <div>授权状态有效，过期时间：{dayjs(cloudConfig.tokenExpires).format("YYYY-MM-DD HH:mm:ss")}</div>
+                <div>
+                  <span>刷新令牌状态：</span>
+                  <span className={`text-sm font-medium ${hasRefreshToken ? 'text-green-600' : 'text-red-600'}`}>
+                    {hasRefreshToken ? '有效' : '失效'}
+                  </span>
+                </div>
+              </div>
+            }
             type="success"
             showIcon
           />
         ) : cloudConfig.token ? (
           <Alert
-            message="授权已过期"
+            title="授权已过期"
             description="请重新授权以继续使用 OneDrive 同步功能"
             type="warning"
             showIcon
@@ -369,14 +430,8 @@ const Settings = () => {
             showIcon
           />
         )}
+        
         <div className="flex justify-end gap-2">
-          <Button
-            type="primary"
-            onClick={handleOneDriveAuth}
-            loading={isTestingConnection}
-          >
-            {isAuthorized ? "重新授权" : "授权 OneDrive"}
-          </Button>
           {isAuthorized && (
             <>
               <Button
@@ -390,12 +445,52 @@ const Settings = () => {
               >
                 撤销授权
               </Button>
+              <Button
+                type="primary"
+                onClick={handleOneDriveAuth}
+                loading={isTestingConnection}
+              >
+                重新授权
+              </Button>
+              <Button
+                type="primary"
+                onClick={handleOneDriveRefresh}
+                loading={tokenStatus.isRefreshing}
+                disabled={tokenStatus.isRefreshing}
+              >
+                刷新令牌
+              </Button>
             </>
+          )}
+          {!isAuthorized && (
+            <Button
+              type="primary"
+              onClick={handleOneDriveAuth}
+              loading={isTestingConnection}
+            >
+              授权 OneDrive
+            </Button>
           )}
         </div>
       </div>
     );
   };
+
+  // 定期检查 Token 状态（每 30 秒）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (cloudConfig.type === "onedrive" && cloudConfig.token) {
+        const isTokenValid = cloudConfig.tokenExpires != null && cloudConfig.tokenExpires > Date.now();
+        setTokenStatus(prev => ({
+          ...prev,
+          isValid: isTokenValid,
+          expiresAt: isTokenValid ? cloudConfig.tokenExpires : null,
+        }));
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [cloudConfig.type, cloudConfig.token, cloudConfig.tokenExpires]);
 
   return (
     <div className="p-6 container mx-auto">
