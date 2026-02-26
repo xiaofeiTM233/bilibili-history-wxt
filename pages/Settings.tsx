@@ -335,11 +335,6 @@ const Settings = () => {
     const hasRefreshToken = cloudConfig.refreshToken != null && cloudConfig.refreshToken !== "";
 
     const handleOneDriveRefresh = async () => {
-      if (!isAuthorized) {
-        message.warning("请先完成 OneDrive 授权");
-        return;
-      }
-      
       setTokenStatus(prev => ({ ...prev, isRefreshing: true }));
       try {
         const response = await browser.runtime.sendMessage({
@@ -403,13 +398,13 @@ const Settings = () => {
             title="OneDrive 已授权"
             description={
               <div>
-                <div>授权状态有效，过期时间：{dayjs(cloudConfig.tokenExpires).format("YYYY-MM-DD HH:mm:ss")}</div>
-                <div>
+                <p>授权状态有效，过期时间：{dayjs(cloudConfig.tokenExpires).format("YYYY-MM-DD HH:mm:ss")}</p>
+                <p>
                   <span>刷新令牌状态：</span>
                   <span className={`text-sm font-medium ${hasRefreshToken ? 'text-green-600' : 'text-red-600'}`}>
                     {hasRefreshToken ? '有效' : '失效'}
                   </span>
-                </div>
+                </p>
               </div>
             }
             type="success"
@@ -418,19 +413,29 @@ const Settings = () => {
         ) : cloudConfig.token ? (
           <Alert
             title="授权已过期"
-            description="请重新授权以继续使用 OneDrive 同步功能"
+            description={
+              <div>
+                <p>请重新授权以继续使用 OneDrive 同步功能</p>
+                <p>
+                  <span>刷新令牌状态：</span>
+                  <span className={`text-sm font-medium ${hasRefreshToken ? 'text-green-600' : 'text-red-600'}`}>
+                    {hasRefreshToken ? '有效' : '失效'}
+                  </span>
+                </p>
+              </div>
+            }
             type="warning"
             showIcon
           />
         ) : (
           <Alert
-            message="需要授权 OneDrive"
+            title="需要授权 OneDrive"
             description="点击下方按钮进行 Microsoft 账号授权"
             type="info"
             showIcon
           />
         )}
-        
+
         <div className="flex justify-end gap-2">
           {isAuthorized && (
             <>
@@ -445,30 +450,23 @@ const Settings = () => {
               >
                 撤销授权
               </Button>
-              <Button
-                type="primary"
-                onClick={handleOneDriveAuth}
-                loading={isTestingConnection}
-              >
-                重新授权
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleOneDriveRefresh}
-                loading={tokenStatus.isRefreshing}
-                disabled={tokenStatus.isRefreshing}
-              >
-                刷新令牌
-              </Button>
             </>
           )}
-          {!isAuthorized && (
+          <Button
+            type="primary"
+            onClick={handleOneDriveAuth}
+            loading={isTestingConnection}
+          >
+            {isAuthorized ? "重新授权" : "授权 OneDrive"}
+          </Button>
+          {hasRefreshToken && (
             <Button
               type="primary"
-              onClick={handleOneDriveAuth}
-              loading={isTestingConnection}
+              onClick={handleOneDriveRefresh}
+              loading={tokenStatus.isRefreshing}
+              disabled={tokenStatus.isRefreshing}
             >
-              授权 OneDrive
+              刷新令牌
             </Button>
           )}
         </div>
@@ -488,7 +486,7 @@ const Settings = () => {
         }));
       }
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [cloudConfig.type, cloudConfig.token, cloudConfig.tokenExpires]);
 
@@ -502,310 +500,310 @@ const Settings = () => {
         <>
           <Card className="mb-6">
             <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium">恢复出厂设置</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                清空所有本地历史记录数据和用户偏好，且无法恢复
-              </p>
-            </div>
-            <Button
-              danger
-              onClick={() => setShowConfirmDialog(true)}
-              disabled={isResetLoading}
-            >
-              恢复出厂
-            </Button>
-          </div>
-
-          <Divider />
-
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium text-blue-600">导出历史记录</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                将所有历史记录导出，方便备份和查看
-              </p>
-            </div>
-            <Space size="large">
-              <Select
-                value={exportFormat}
-                onChange={(value) => setExportFormat(value as "csv" | "json")}
-                disabled={isExporting}
-                style={{ width: 100 }}
-                options={[
-                  { label: "JSON", value: "json" },
-                  { label: "CSV", value: "csv" },
-                ]}
-              />
-              <Button
-                type="primary"
-                onClick={() => handleExport(exportFormat)}
-                disabled={isExporting}
-                loading={isExporting}
-              >
-                导出
-              </Button>
-            </Space>
-          </div>
-
-          <Divider />
-
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium text-blue-600">导入历史记录</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                将.json文件导入，恢复历史记录
-              </p>
-            </div>
-            <Button
-              type="primary"
-              onClick={() => handleImport()}
-              disabled={isImporting}
-              loading={isImporting}
-            >
-              导入
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="mb-6">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium">同步删除：插件 -&gt; B站</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                删除本地历史记录时同步删除B站服务器历史记录
-              </p>
-            </div>
-            <Switch checked={isSyncDelete} onChange={handleSyncDeleteChange} />
-          </div>
-
-          <Divider />
-
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium">同步删除：B站 -&gt; 插件</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                在B站网页端删除历史记录时同步删除插件历史记录
-              </p>
-            </div>
-            <Switch checked={isSyncDeleteFromBilibili} onChange={handleSyncDeleteFromBilibiliChange} />
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium text-fuchsia-600">
-                自动同步时间间隔
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为1</p>
-            </div>
-            <Space size="large">
-              <span className="text-gray-600">间隔时间：</span>
-              <InputNumber
-                mode="spinner"
-                min={1}
-                max={999}
-                value={syncInterval}
-                onChange={(value) => handleSyncIntervalChange(value || 1)}
-                style={{ width: 200 }}
-              />
-            </Space>
-          </div>
-        </div>
-      </Card>
-
-      {/* 云同步设置 */}
-      <Card className="mb-6">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-base font-medium flex items-center gap-2">
-                <CloudOutlined className="text-blue-500" />
-                <span className="text-blue-600">云同步备份</span>
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                将历史记录备份到 WebDAV 或 OneDrive
-              </p>
-            </div>
-            <Switch
-              checked={cloudConfig.enabled}
-              onChange={(checked) => updateCloudConfig({ enabled: checked })}
-            />
-          </div>
-
-          {cloudConfig.enabled && (
-            <>
-              <Divider />
-
-              {/* 同步类型选择 */}
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-medium">云服务类型</h3>
-                </div>
-                <Select
-                  value={cloudConfig.type}
-                  onChange={(value) => updateCloudConfig({ type: value as CloudSyncType })}
-                  style={{ width: 150 }}
-                  options={[
-                    { label: "WebDAV", value: "webdav" },
-                    { label: "OneDrive", value: "onedrive" },
-                  ]}
-                />
-              </div>
-
-              <Divider />
-
-              {/* 根据类型显示配置表单 */}
-              {cloudConfig.type === "webdav" ? renderWebDAVConfig() : renderOneDriveConfig()}
-
-              <Divider />
-
-              {/* 同步方向 */}
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-base font-medium">同步方向</h3>
+                  <h3 className="text-base font-medium">恢复出厂设置</h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    上传：本地覆盖云端 / 下载：云端覆盖本地
+                    清空所有本地历史记录数据和用户偏好，且无法恢复
                   </p>
                 </div>
-                <Select
-                  value={cloudConfig.syncDirection}
-                  onChange={(value) => updateCloudConfig({ syncDirection: value as "upload" | "download" | "bidirectional" })}
-                  style={{ width: 150 }}
-                  options={[
-                    { label: "上传到云端", value: "upload" },
-                    { label: "从云端下载", value: "download" },
-                  ]}
-                />
+                <Button
+                  danger
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={isResetLoading}
+                >
+                  恢复出厂
+                </Button>
               </div>
 
               <Divider />
 
-              {/* 自动同步 */}
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-medium">自动定时同步</h3>
-                  <p className="text-sm text-gray-500 mt-1">按照设定的间隔自动执行同步</p>
+                  <h3 className="text-base font-medium text-blue-600">导出历史记录</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    将所有历史记录导出，方便备份和查看
+                  </p>
                 </div>
-                <Switch
-                  checked={cloudConfig.autoSync}
-                  onChange={(checked) => updateCloudConfig({ autoSync: checked })}
-                />
+                <Space size="large">
+                  <Select
+                    value={exportFormat}
+                    onChange={(value) => setExportFormat(value as "csv" | "json")}
+                    disabled={isExporting}
+                    style={{ width: 100 }}
+                    options={[
+                      { label: "JSON", value: "json" },
+                      { label: "CSV", value: "csv" },
+                    ]}
+                  />
+                  <Button
+                    type="primary"
+                    onClick={() => handleExport(exportFormat)}
+                    disabled={isExporting}
+                    loading={isExporting}
+                  >
+                    导出
+                  </Button>
+                </Space>
               </div>
-
-              {cloudConfig.autoSync && (
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-base font-medium text-fuchsia-600">
-                      云同步间隔
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为5</p>
-                  </div>
-                  <Space size="large">
-                    <span className="text-gray-600">间隔时间：</span>
-                    <InputNumber
-                      mode="spinner"
-                      min={5}
-                      max={1440}
-                      value={cloudConfig.syncInterval}
-                      onChange={(value) => updateCloudConfig({ syncInterval: value || 60 })}
-                      style={{ width: 200 }}
-                    />
-                  </Space>
-                </div>
-              )}
 
               <Divider />
 
-              {/* 最后同步时间和操作按钮 */}
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  {lastCloudUpload && (
-                    <p>上次上传：{dayjs(lastCloudUpload).format("YYYY-MM-DD HH:mm:ss")}</p>
-                  )}
-                  {lastCloudDownload && (
-                    <p>上次下载：{dayjs(lastCloudDownload).format("YYYY-MM-DD HH:mm:ss")}</p>
-                  )}
+                <div className="flex-1">
+                  <h3 className="text-base font-medium text-blue-600">导入历史记录</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    将.json文件导入，恢复历史记录
+                  </p>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    icon={<LinkOutlined />}
-                    onClick={handleTestConnection}
-                    loading={isTestingConnection}
-                  >
-                    测试连接
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<CloudUploadOutlined />}
-                    onClick={handleCloudUpload}
-                    loading={isCloudSyncing}
-                    disabled={
-                      cloudConfig.type === "webdav" 
-                        ? !cloudConfig.serverUrl || !cloudConfig.username
-                        : !cloudConfig.token
-                    }
-                  >
-                    立即上传
-                  </Button>
-                  <Button
-                    type="primary"
-                    danger
-                    icon={<CloudDownloadOutlined />}
-                    onClick={handleCloudDownload}
-                    loading={isCloudSyncing}
-                    disabled={
-                      cloudConfig.type === "webdav" 
-                        ? !cloudConfig.serverUrl || !cloudConfig.username
-                        : !cloudConfig.token
-                    }
-                  >
-                    立即下载
-                  </Button>
-                </div>
+                <Button
+                  type="primary"
+                  onClick={() => handleImport()}
+                  disabled={isImporting}
+                  loading={isImporting}
+                >
+                  导入
+                </Button>
               </div>
-            </>
-          )}
-        </div>
-      </Card>
+            </div>
+          </Card>
 
-      <Modal
-        title="确认恢复出厂设置？"
-        open={showConfirmDialog}
-        onOk={() => {
-          handleReset();
-        }}
-        onCancel={() => setShowConfirmDialog(false)}
-        okText="确认"
-        cancelText="取消"
-        okButtonProps={{ danger: true, loading: isResetLoading }}
-        cancelButtonProps={{ disabled: isResetLoading }}
-      >
-        <p className="text-gray-600">
-          此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
-        </p>
-        {isResetLoading && (
-          <p className="text-blue-600 mt-4">{resetStatus}</p>
-        )}
-      </Modal>
+          <Card className="mb-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-base font-medium">同步删除：插件 -&gt; B站</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    删除本地历史记录时同步删除B站服务器历史记录
+                  </p>
+                </div>
+                <Switch checked={isSyncDelete} onChange={handleSyncDeleteChange} />
+              </div>
 
-      <Modal
-        open={showResetResultDialog}
-        onOk={() => setShowResetResultDialog(false)}
-        onCancel={() => setShowResetResultDialog(false)}
-        okText="确定"
-        cancelButtonProps={{ style: { display: "none" } }}
-      >
-        <p className="text-xl text-gray-600 text-center font-medium">
-          {resetResult}
-        </p>
-      </Modal>
+              <Divider />
+
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-base font-medium">同步删除：B站 -&gt; 插件</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    在B站网页端删除历史记录时同步删除插件历史记录
+                  </p>
+                </div>
+                <Switch checked={isSyncDeleteFromBilibili} onChange={handleSyncDeleteFromBilibiliChange} />
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-base font-medium text-fuchsia-600">
+                    自动同步时间间隔
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为1</p>
+                </div>
+                <Space size="large">
+                  <span className="text-gray-600">间隔时间：</span>
+                  <InputNumber
+                    mode="spinner"
+                    min={1}
+                    max={999}
+                    value={syncInterval}
+                    onChange={(value) => handleSyncIntervalChange(value || 1)}
+                    style={{ width: 200 }}
+                  />
+                </Space>
+              </div>
+            </div>
+          </Card>
+
+          {/* 云同步设置 */}
+          <Card className="mb-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-base font-medium flex items-center gap-2">
+                    <CloudOutlined className="text-blue-500" />
+                    <span className="text-blue-600">云同步备份</span>
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    将历史记录备份到 WebDAV 或 OneDrive
+                  </p>
+                </div>
+                <Switch
+                  checked={cloudConfig.enabled}
+                  onChange={(checked) => updateCloudConfig({ enabled: checked })}
+                />
+              </div>
+
+              {cloudConfig.enabled && (
+                <>
+                  <Divider />
+
+                  {/* 同步类型选择 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium">云服务类型</h3>
+                    </div>
+                    <Select
+                      value={cloudConfig.type}
+                      onChange={(value) => updateCloudConfig({ type: value as CloudSyncType })}
+                      style={{ width: 150 }}
+                      options={[
+                        { label: "WebDAV", value: "webdav" },
+                        { label: "OneDrive", value: "onedrive" },
+                      ]}
+                    />
+                  </div>
+
+                  <Divider />
+
+                  {/* 根据类型显示配置表单 */}
+                  {cloudConfig.type === "webdav" ? renderWebDAVConfig() : renderOneDriveConfig()}
+
+                  <Divider />
+
+                  {/* 同步方向 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium">同步方向</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        上传：本地覆盖云端 / 下载：云端覆盖本地
+                      </p>
+                    </div>
+                    <Select
+                      value={cloudConfig.syncDirection}
+                      onChange={(value) => updateCloudConfig({ syncDirection: value as "upload" | "download" | "bidirectional" })}
+                      style={{ width: 150 }}
+                      options={[
+                        { label: "上传到云端", value: "upload" },
+                        { label: "从云端下载", value: "download" },
+                      ]}
+                    />
+                  </div>
+
+                  <Divider />
+
+                  {/* 自动同步 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium">自动定时同步</h3>
+                      <p className="text-sm text-gray-500 mt-1">按照设定的间隔自动执行同步</p>
+                    </div>
+                    <Switch
+                      checked={cloudConfig.autoSync}
+                      onChange={(checked) => updateCloudConfig({ autoSync: checked })}
+                    />
+                  </div>
+
+                  {cloudConfig.autoSync && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-base font-medium text-fuchsia-600">
+                          云同步间隔
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">单位：分钟，最小值为5</p>
+                      </div>
+                      <Space size="large">
+                        <span className="text-gray-600">间隔时间：</span>
+                        <InputNumber
+                          mode="spinner"
+                          min={5}
+                          max={1440}
+                          value={cloudConfig.syncInterval}
+                          onChange={(value) => updateCloudConfig({ syncInterval: value || 60 })}
+                          style={{ width: 200 }}
+                        />
+                      </Space>
+                    </div>
+                  )}
+
+                  <Divider />
+
+                  {/* 最后同步时间和操作按钮 */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-500">
+                      {lastCloudUpload && (
+                        <p>上次上传：{dayjs(lastCloudUpload).format("YYYY-MM-DD HH:mm:ss")}</p>
+                      )}
+                      {lastCloudDownload && (
+                        <p>上次下载：{dayjs(lastCloudDownload).format("YYYY-MM-DD HH:mm:ss")}</p>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        icon={<LinkOutlined />}
+                        onClick={handleTestConnection}
+                        loading={isTestingConnection}
+                      >
+                        测试连接
+                      </Button>
+                      <Button
+                        type="primary"
+                        icon={<CloudUploadOutlined />}
+                        onClick={handleCloudUpload}
+                        loading={isCloudSyncing}
+                        disabled={
+                          cloudConfig.type === "webdav"
+                            ? !cloudConfig.serverUrl || !cloudConfig.username
+                            : !cloudConfig.token
+                        }
+                      >
+                        立即上传
+                      </Button>
+                      <Button
+                        type="primary"
+                        danger
+                        icon={<CloudDownloadOutlined />}
+                        onClick={handleCloudDownload}
+                        loading={isCloudSyncing}
+                        disabled={
+                          cloudConfig.type === "webdav"
+                            ? !cloudConfig.serverUrl || !cloudConfig.username
+                            : !cloudConfig.token
+                        }
+                      >
+                        立即下载
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+
+          <Modal
+            title="确认恢复出厂设置？"
+            open={showConfirmDialog}
+            onOk={() => {
+              handleReset();
+            }}
+            onCancel={() => setShowConfirmDialog(false)}
+            okText="确认"
+            cancelText="取消"
+            okButtonProps={{ danger: true, loading: isResetLoading }}
+            cancelButtonProps={{ disabled: isResetLoading }}
+          >
+            <p className="text-gray-600">
+              此操作将删除所有本地存储的历史记录数据和用户偏好，且无法恢复。确定要继续吗？
+            </p>
+            {isResetLoading && (
+              <p className="text-blue-600 mt-4">{resetStatus}</p>
+            )}
+          </Modal>
+
+          <Modal
+            open={showResetResultDialog}
+            onOk={() => setShowResetResultDialog(false)}
+            onCancel={() => setShowResetResultDialog(false)}
+            okText="确定"
+            cancelButtonProps={{ style: { display: "none" } }}
+          >
+            <p className="text-xl text-gray-600 text-center font-medium">
+              {resetResult}
+            </p>
+          </Modal>
         </>
       )}
     </div>
