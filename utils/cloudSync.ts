@@ -172,38 +172,21 @@ export const refreshOneDriveToken = async (refreshToken: string): Promise<CloudS
  * 检查 OneDrive Token 是否有效，如果过期则自动刷新
  */
 export const ensureValidOneDriveToken = async (config: CloudSyncConfig): Promise<string | null> => {
-  console.log("ensureValidOneDriveToken: 开始检查 Token", {
-    hasToken: !!config.token,
-    hasRefreshToken: !!config.refreshToken,
-    tokenExpires: config.tokenExpires,
-    now: Date.now(),
-  });
-  
   if (!config.token) {
-    console.log("ensureValidOneDriveToken: 没有 access_token");
     return null;
   }
   
   // 检查 token 是否过期（留出 5 分钟的缓冲时间）
   const bufferTime = 5 * 60 * 1000; // 5 分钟
   if (config.tokenExpires && config.tokenExpires - bufferTime > Date.now()) {
-    console.log("ensureValidOneDriveToken: Token 仍然有效，未过期");
     return config.token;
   }
   
-  console.log("ensureValidOneDriveToken: Token 已过期或即将过期，尝试刷新");
-  
   // Token 已过期或即将过期，尝试使用 refresh_token 刷新
   if (config.refreshToken) {
-    console.log("ensureValidOneDriveToken: 使用 refresh_token 刷新");
     const refreshResult = await refreshOneDriveToken(config.refreshToken);
     
     if (refreshResult.success && refreshResult.data) {
-      console.log("ensureValidOneDriveToken: Token 刷新成功", {
-        newToken: refreshResult.data.token.substring(0, 20) + "...",
-        newRefreshToken: refreshResult.data.refreshToken.substring(0, 20) + "...",
-        expiresIn: refreshResult.data.expiresIn,
-      });
       // 更新存储中的令牌信息
       const updatedConfig: CloudSyncConfig = {
         ...config,
@@ -213,15 +196,11 @@ export const ensureValidOneDriveToken = async (config: CloudSyncConfig): Promise
         tokenExpires: Date.now() + refreshResult.data.expiresIn * 1000,
         refreshTokenExpired: false, // 刷新成功后清除过期标志
       };
-      console.log("ensureValidOneDriveToken: 更新配置中的 tokenExpires", updatedConfig.tokenExpires);
       await setStorageValue("cloudSyncConfig", updatedConfig);
       return refreshResult.data.token;
     } else {
-      console.error("ensureValidOneDriveToken: Token 刷新失败:", refreshResult.message);
-      
       // 如果刷新令牌已过期，设置过期标志
       if (refreshResult.refreshTokenExpired) {
-        console.log("ensureValidOneDriveToken: 刷新令牌已过期，设置过期标志");
         const updatedConfig: CloudSyncConfig = {
           ...config,
           refreshTokenExpired: true, // 设置刷新令牌过期标志
@@ -229,12 +208,9 @@ export const ensureValidOneDriveToken = async (config: CloudSyncConfig): Promise
         await setStorageValue("cloudSyncConfig", updatedConfig);
       }
     }
-  } else {
-    console.error("ensureValidOneDriveToken: 没有 refresh_token，无法刷新");
   }
   
   // 刷新失败或没有 refresh_token，需要重新授权
-  console.log("ensureValidOneDriveToken: 需要重新授权");
   return null;
 };
 

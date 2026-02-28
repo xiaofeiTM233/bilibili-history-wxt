@@ -135,6 +135,26 @@ export default defineBackground(() => {
       if (!config || !config.enabled || !config.autoSync) {
         return;
       }
+
+      // Token 保活：检查 OneDrive token 是否即将过期
+      if (config.type === "onedrive" && config.token && config.refreshToken && config.tokenExpires) {
+        const bufferTime = 5 * 60 * 1000; // 5 分钟
+        const timeUntilExpiry = config.tokenExpires - Date.now();
+        
+        if (timeUntilExpiry < bufferTime) {
+          console.log(`Token 即将过期（剩余 ${Math.floor(timeUntilExpiry / 60000)} 分钟），执行保活刷新`);
+          const token = await ensureValidOneDriveToken(config);
+          if (!token) {
+            console.warn("Token 保活刷新失败，需要重新授权");
+          }
+          // 重新获取配置以获取最新的 tokenExpires
+          const updatedConfig = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
+          if (updatedConfig) {
+            config.tokenExpires = updatedConfig.tokenExpires;
+          }
+        }
+      }
+
       // 获取云同步间隔
       const syncInterval = config.syncInterval || 60;
       // 获取当前云同步剩余时间
