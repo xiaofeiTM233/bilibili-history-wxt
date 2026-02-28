@@ -349,7 +349,7 @@ const Settings = () => {
     };
 
     const isAuthorized = cloudConfig.token && cloudConfig.tokenExpires != null && cloudConfig.tokenExpires > Date.now();
-    const hasRefreshToken = cloudConfig.refreshToken != null && cloudConfig.refreshToken !== "";
+    const hasRefreshToken = cloudConfig.refreshToken != null && cloudConfig.refreshToken !== "" && !cloudConfig.refreshTokenExpired;
 
     const handleOneDriveRefresh = async () => {
       setTokenStatus(prev => ({ ...prev, isRefreshing: true }));
@@ -374,6 +374,15 @@ const Settings = () => {
           }
         } else {
           message.error(response.message || "刷新失败");
+          // 如果刷新令牌已过期，更新配置状态
+          if (response.refreshTokenExpired) {
+            const configResponse = await browser.runtime.sendMessage({
+              action: "getCloudConfig",
+            });
+            if (configResponse.success && configResponse.config) {
+              setCloudConfig(configResponse.config);
+            }
+          }
           setTokenStatus(prev => ({ ...prev, isRefreshing: false }));
         }
       } catch (error) {

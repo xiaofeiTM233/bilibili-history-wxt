@@ -9,7 +9,7 @@ import {
 } from "../utils/constants";
 import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
-import { uploadToCloud, downloadFromCloud, testCloudConnection, oneDriveAuth, ensureValidOneDriveToken } from "../utils/cloudSync";
+import { uploadToCloud, downloadFromCloud, testCloudConnection, oneDriveAuth, ensureValidOneDriveToken, refreshOneDriveToken } from "../utils/cloudSync";
 import { CloudSyncConfig, CloudSyncResult } from "../utils/types";
 
 export default defineBackground(() => {
@@ -344,6 +344,7 @@ export default defineBackground(() => {
         config.token = result.data.token;
         config.refreshToken = result.data.refreshToken;
         config.tokenExpires = Date.now() + (result.data.expiresIn - 300) * 1000;
+        config.refreshTokenExpired = false; // 重新授权后清除过期标志
         await setStorageValue(CLOUD_SYNC_CONFIG, config);
         sendResponse({ success: true, message: "授权成功" });
       } else {
@@ -410,6 +411,7 @@ export default defineBackground(() => {
           token: result.data.token,
           refreshToken: result.data.refreshToken,
           tokenExpires: Date.now() + result.data.expiresIn * 1000,
+          refreshTokenExpired: false, // 刷新成功后清除过期标志
         };
         await setStorageValue(CLOUD_SYNC_CONFIG, updatedConfig);
         
@@ -421,9 +423,21 @@ export default defineBackground(() => {
         });
       } else {
         console.error("OneDrive Token 手动刷新失败:", result.message);
+        
+        // 如果刷新令牌已过期，设置过期标志
+        if (result.refreshTokenExpired) {
+          console.log("刷新令牌已过期，设置过期标志");
+          const updatedConfig: CloudSyncConfig = {
+            ...config,
+            refreshTokenExpired: true, // 设置刷新令牌过期标志
+          };
+          await setStorageValue(CLOUD_SYNC_CONFIG, updatedConfig);
+        }
+        
         sendResponse({
           success: false,
           message: result.message,
+          refreshTokenExpired: result.refreshTokenExpired,
         });
       }
     } catch (error) {

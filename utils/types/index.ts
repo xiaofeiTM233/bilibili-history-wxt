@@ -61,6 +61,7 @@ export interface CloudSyncConfig {
   // OneDrive 配置
   token?: string;
   refreshToken?: string;
+  refreshTokenExpired?: boolean; // 刷新令牌是否已过期
   tokenExpires?: number;
   // 上传/下载方向
   syncDirection: "upload" | "download" | "bidirectional"; // upload: 上传覆盖云端, download: 下载覆盖本地
@@ -73,6 +74,7 @@ export interface CloudSyncResult<T = void> {
   success: boolean;
   message: string;
   data?: T;
+  refreshTokenExpired?: boolean; // 刷新令牌是否已过期
 }
 
 /**
