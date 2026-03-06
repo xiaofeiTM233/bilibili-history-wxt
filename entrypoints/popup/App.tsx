@@ -1,23 +1,62 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { Button, Checkbox, Space } from "antd";
+import { CloudUploadOutlined, CloudDownloadOutlined } from "@ant-design/icons";
+import { CloudSyncConfig } from "../../utils/types";
+import {
+  CLOUD_SYNC_CONFIG,
+  LAST_CLOUD_UPLOAD,
+  LAST_CLOUD_DOWNLOAD,
+} from "../../utils/constants";
+
 function App() {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [status, setStatus] = useState("");
+  const [status, setStatusState] = useState("");
   const [isFullSync, setIsFullSync] = useState(false);
 
+  // 云同步相关状态
+  const [cloudConfig, setCloudConfig] = useState<CloudSyncConfig | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const cloudConfigRef = useRef(cloudConfig);
+
+  // 保持 ref 同步
   useEffect(() => {
-    // 检查同步状态
-    const checkSyncStatus = async () => {
-      const result = await browser.storage.local.get("lastSync");
-      if (result.lastSync) {
-        const lastSync = new Date(result.lastSync);
-        setStatus(`上次同步时间：${lastSync.toLocaleString()}`);
-      } else {
-        setStatus("尚未同步过历史记录");
+    cloudConfigRef.current = cloudConfig;
+  }, [cloudConfig]);
+
+  // 格式化时间
+  const formatTime = (timestamp: number | null) => {
+    if (!timestamp) return "尚未同步";
+    return new Date(timestamp).toLocaleString();
+  };
+
+  // 自定义 setStatus：自动附加时间信息
+  const setStatus = (currentStatus: string) => {
+    const config = cloudConfigRef.current;
+    browser.storage.local.get(["lastSync", LAST_CLOUD_UPLOAD, LAST_CLOUD_DOWNLOAD]).then((result) => {
+      const lines: string[] = [];
+      if (currentStatus) lines.push(currentStatus);
+      if (result.lastSync) lines.push(`上次同步时间：${formatTime(result.lastSync)}`);
+      if (config?.enabled && config.syncDirection === "upload" && result[LAST_CLOUD_UPLOAD]) {
+        lines.push(`上次上传时间：${formatTime(result[LAST_CLOUD_UPLOAD])}`);
       }
+      if (config?.enabled && config.syncDirection === "download" && result[LAST_CLOUD_DOWNLOAD]) {
+        lines.push(`上次下载时间：${formatTime(result[LAST_CLOUD_DOWNLOAD])}`);
+      }
+      setStatusState(lines.join("\n"));
+    });
+  };
+
+  useEffect(() => {
+    // 初始化：加载配置并显示上次同步时间
+    const initStatus = async () => {
+      const configResult = await browser.storage.local.get(CLOUD_SYNC_CONFIG);
+      const config = configResult[CLOUD_SYNC_CONFIG] || null;
+      setCloudConfig(config);
+      cloudConfigRef.current = config;
+      setStatus("");
     };
-    checkSyncStatus();
+    initStatus();
   }, []);
 
   const handleSync = async () => {
@@ -31,7 +70,7 @@ function App() {
       });
 
       if (response && response.success) {
-        setStatus(response.message);
+        setStatus("同步成功");
       } else {
         setStatus("同步失败：" + (response ? response.error : "未知错误"));
       }
@@ -40,6 +79,85 @@ function App() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  // 云同步上传
+  const handleCloudUpload = async () => {
+    setIsCloudSyncing(true);
+    try {
+      const response = await browser.runtime.sendMessage({
+        action: "cloudUpload",
+        config: cloudConfig,
+      });
+      if (response.success) {
+        setStatus("云同步上传成功");
+      } else {
+        setStatus(response.message || "上传失败");
+      }
+    } catch (error) {
+      setStatus("上传失败");
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // 云同步下载
+  const handleCloudDownload = async () => {
+    setIsCloudSyncing(true);
+    try {
+      const response = await browser.runtime.sendMessage({
+        action: "cloudDownload",
+        config: cloudConfig,
+      });
+      if (response.success) {
+        setStatus("云同步下载成功");
+      } else {
+        setStatus(response.message || "下载失败");
+      }
+    } catch (error) {
+      setStatus("下载失败");
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  // 根据同步方向获取云同步按钮
+  const getCloudSyncButton = () => {
+    if (!cloudConfig?.enabled) return null;
+    const isDisabled = cloudConfig.type === "webdav"
+      ? !cloudConfig.serverUrl || !cloudConfig.username
+      : !cloudConfig.token;
+
+    if (cloudConfig.syncDirection === "upload") {
+      return (
+        <Button
+          type="primary"
+          block
+          icon={<CloudUploadOutlined />}
+          onClick={handleCloudUpload}
+          loading={isCloudSyncing}
+          disabled={isDisabled || isCloudSyncing}
+        >
+          云同步上传
+        </Button>
+      );
+    }
+    if (cloudConfig.syncDirection === "download") {
+      return (
+        <Button
+          type="primary"
+          block
+          danger
+          icon={<CloudDownloadOutlined />}
+          onClick={handleCloudDownload}
+          loading={isCloudSyncing}
+          disabled={isDisabled || isCloudSyncing}
+        >
+          云同步下载
+        </Button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -55,10 +173,10 @@ function App() {
               url: "/my-history.html",
             });
           }}
-          disabled={isSyncing}
         >
           打开历史记录页面
         </Button>
+        {getCloudSyncButton()}
         <Button
           type="primary"
           block
@@ -79,7 +197,7 @@ function App() {
             全量同步
           </Checkbox>
         </Space>
-        {status && <div className="mt-2.5 text-gray-600">{status}</div>}
+        {status && <div className="mt-2.5 text-gray-600 whitespace-pre-line">{status}</div>}
       </div >
     </>
   );

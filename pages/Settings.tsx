@@ -754,10 +754,10 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-500">
                       {lastCloudUpload && (
-                        <p>上次上传：{dayjs(lastCloudUpload).format("YYYY-MM-DD HH:mm:ss")}</p>
+                        <p>上次上传时间：{dayjs(lastCloudUpload).format("YYYY-MM-DD HH:mm:ss")}</p>
                       )}
                       {lastCloudDownload && (
-                        <p>上次下载：{dayjs(lastCloudDownload).format("YYYY-MM-DD HH:mm:ss")}</p>
+                        <p>上次下载时间：{dayjs(lastCloudDownload).format("YYYY-MM-DD HH:mm:ss")}</p>
                       )}
                     </div>
                     <div className="flex justify-end gap-2">
