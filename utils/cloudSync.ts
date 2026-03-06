@@ -40,7 +40,7 @@ export const oneDriveAuth = async (): Promise<CloudSyncResult<{ token: string; r
     const { codeVerifier, codeChallenge } = await generatePKCE();
 
     // 第一步：获取授权码
-    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${ONEDRIVE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent("offline_access Files.ReadWrite.AppFolder")}&code_challenge=${codeChallenge}&code_challenge_method=S256&prompt=consent`;
+    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${ONEDRIVE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent("offline_access Files.ReadWrite.AppFolder")}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
     const responseUrl = await browser.identity.launchWebAuthFlow({
       url: authUrl,
