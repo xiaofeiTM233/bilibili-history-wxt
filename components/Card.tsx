@@ -4,7 +4,7 @@ import { message } from "antd";
 import { IS_SYNC_DELETE } from "../utils/constants";
 import { getStorageValue } from "../utils/storage";
 import { deleteHistoryItem } from "../utils/db";
-import { getTypeTag } from "../utils/common";
+import { getTypeTag, getContentUrl } from "../utils/common";
 
 interface CardProps {
   item: HistoryItemType;
@@ -92,7 +92,7 @@ export const Card: React.FC<CardProps> = ({ item, itemType, onDelete }) => {
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <a
-        href={`https://www.bilibili.com/video/${bvid}`}
+        href={getContentUrl(historyItem)}
         target="_blank"
         rel="noopener noreferrer"
         className="no-underline text-inherit"
