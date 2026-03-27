@@ -43,7 +43,7 @@
       ]
     },
     "condition": {
-      "domainType": "thirdParty",
+      "initiatorDomains": ["www.bilibili.com"],
       "urlFilter": "bilivideo.com",
       "resourceTypes": ["xmlhttprequest", "media", "websocket", "script"],
       "requestMethods": ["get"]
