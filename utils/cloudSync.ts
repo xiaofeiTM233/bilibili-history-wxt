@@ -1,7 +1,12 @@
 import { CloudSyncConfig, CloudSyncResult, BackupData } from "./types";
 import { getAllHistory, clearHistory, saveHistory } from "./db";
+import { getStorageValue, setStorageValue } from "./storage";
+import { CLOUD_SYNC_CONFIG } from "./constants";
 
 const BACKUP_FILENAME = "bilibili-history-backup.json";
+
+// 全局刷新锁：保证同一时刻只有一个刷新流程在跑，避免并发刷新导致 refresh_token 被轮换作废
+let refreshLock: Promise<string | null> | null = null;
 
 // OneDrive OAuth 配置 (PKCE Flow - 无需后端)
 const ONEDRIVE_CLIENT_ID = "df5eb106-9689-458f-9981-fdcfc658bf17";
@@ -183,31 +188,59 @@ export const ensureValidOneDriveToken = async (config: CloudSyncConfig): Promise
   }
   
   // Token 已过期或即将过期，尝试使用 refresh_token 刷新
-  if (config.refreshToken) {
-    const refreshResult = await refreshOneDriveToken(config.refreshToken);
-    
-    if (refreshResult.success && refreshResult.data) {
-      // 更新存储中的令牌信息
-      const updatedConfig: CloudSyncConfig = {
-        ...config,
-        token: refreshResult.data.token,
-        refreshToken: refreshResult.data.refreshToken,
-        // 使用固定 1 小时过期时间，避免因 API 返回不准确导致频繁刷新
-        tokenExpires: Date.now() + refreshResult.data.expiresIn * 1000,
-        refreshTokenExpired: false, // 刷新成功后清除过期标志
-      };
-      await setStorageValue("cloudSyncConfig", updatedConfig);
-      return refreshResult.data.token;
-    } else {
-      // 如果刷新令牌已过期，设置过期标志
-      if (refreshResult.refreshTokenExpired) {
-        const updatedConfig: CloudSyncConfig = {
-          ...config,
-          refreshTokenExpired: true, // 设置刷新令牌过期标志
-        };
-        await setStorageValue("cloudSyncConfig", updatedConfig);
+  const refreshToken = config.refreshToken;
+  if (refreshToken) {
+    // 通过全局刷新锁串行化刷新，避免并发刷新导致 refresh_token 被轮换作废
+    const refreshPromise = (async (): Promise<string | null> => {
+      // 锁内重新检查：可能另一个并发刷新已经把 token 续好了
+      const latestConfig = await getStorageValue<CloudSyncConfig>(CLOUD_SYNC_CONFIG);
+      if (
+        latestConfig &&
+        latestConfig.type === "onedrive" &&
+        latestConfig.token &&
+        latestConfig.tokenExpires &&
+        latestConfig.tokenExpires - bufferTime > Date.now()
+      ) {
+        return latestConfig.token;
       }
-    }
+
+      const refreshResult = await refreshOneDriveToken(refreshToken);
+
+      if (refreshResult.success && refreshResult.data) {
+        // 更新存储中的令牌信息
+        const updatedConfig: CloudSyncConfig = {
+          ...latestConfig,
+          ...config,
+          token: refreshResult.data.token,
+          refreshToken: refreshResult.data.refreshToken,
+          // 使用固定 1 小时过期时间，避免因 API 返回不准确导致频繁刷新
+          tokenExpires: Date.now() + refreshResult.data.expiresIn * 1000,
+          refreshTokenExpired: false, // 刷新成功后清除过期标志
+        };
+        await setStorageValue(CLOUD_SYNC_CONFIG, updatedConfig);
+        return refreshResult.data.token;
+      } else {
+        // 如果刷新令牌已过期，设置过期标志
+        if (refreshResult.refreshTokenExpired) {
+          const updatedConfig: CloudSyncConfig = {
+            ...latestConfig,
+            ...config,
+            refreshTokenExpired: true, // 设置刷新令牌过期标志
+          };
+          await setStorageValue(CLOUD_SYNC_CONFIG, updatedConfig);
+        }
+        return null;
+      }
+    })();
+
+    refreshLock = refreshPromise.finally(() => {
+      // 只有当前锁等于本 promise 时才清空，避免覆盖后续并发锁
+      if (refreshLock === refreshPromise) {
+        refreshLock = null;
+      }
+    });
+
+    return refreshLock;
   }
   
   // 刷新失败或没有 refresh_token，需要重新授权
@@ -370,7 +403,7 @@ class OneDriveClient {
 
       // 使用 OneDrive 应用专用文件夹 (approot) 上传到应用的私有目录
       const uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${BACKUP_FILENAME}:/content`;
-      
+
       const response = await fetch(uploadUrl, {
         method: "PUT",
         headers: await this.getHeaders(),
@@ -403,7 +436,7 @@ class OneDriveClient {
 
       // 从应用专用文件夹 (approot) 下载
       const downloadUrl = `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${BACKUP_FILENAME}:/content`;
-      
+
       const response = await fetch(downloadUrl, {
         method: "GET",
         headers: await this.getHeaders(),
