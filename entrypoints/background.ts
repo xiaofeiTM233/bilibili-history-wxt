@@ -1,11 +1,11 @@
 import {
   IS_SYNCING,
   SYNC_INTERVAL,
-  SYNC_TIME_REMAIN,
+  LAST_SYNC_TIME,
   IS_SYNC_DELETE_FROM_BILIBILI,
   CLOUD_SYNC_CONFIG,
   IS_CLOUD_SYNCING,
-  CLOUD_SYNC_TIME_REMAIN,
+  LAST_CLOUD_SYNC,
 } from "../utils/constants";
 import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
@@ -21,11 +21,24 @@ export default defineBackground(() => {
     browser.alarms.create("syncHistory", {
       periodInMinutes: 1,
     });
+    // 云同步检测闹钟：每分钟触发，由 background 按真实时间差判断是否需要同步
+    browser.alarms.create("cloudSync", {
+      periodInMinutes: 1,
+    });
 
     // 首次安装时打开历史记录页面
     if (details.reason === "install") {
       browser.tabs.create({ url: "/my-history.html" });
     }
+  });
+
+  // 扩展启动时确保云同步检测闹钟存在（部分浏览器 onInstalled 不会重复触发）
+  browser.runtime.onStartup.addListener(() => {
+    browser.alarms.get("cloudSync").then((alarm) => {
+      if (!alarm) {
+        browser.alarms.create("cloudSync", { periodInMinutes: 1 });
+      }
+    });
   });
 
   // 扩展启动时检查并刷新 OneDrive Token
@@ -47,7 +60,7 @@ export default defineBackground(() => {
     }
   });
 
-  const intervalSync = async (syncInterval: number) => {
+  const intervalSync = async () => {
     try {
       // 检查是否正在同步
       const isSyncing = await getStorageValue(IS_SYNCING);
@@ -66,13 +79,11 @@ export default defineBackground(() => {
     } finally {
       // 无论成功还是失败，都重置同步状态
       await setStorageValue(IS_SYNCING, false);
-      // 重置当前同步剩余时间
-      await setStorageValue(SYNC_TIME_REMAIN, syncInterval);
     }
   };
 
   // 云同步定时任务处理
-  const intervalCloudSync = async (syncInterval: number) => {
+  const intervalCloudSync = async () => {
     try {
       // 获取云同步配置
       const config = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
@@ -106,29 +117,28 @@ export default defineBackground(() => {
     } finally {
       // 无论成功还是失败，都重置同步状态
       await setStorageValue(IS_CLOUD_SYNCING, false);
-      // 重置当前同步剩余时间
-      await setStorageValue(CLOUD_SYNC_TIME_REMAIN, syncInterval);
     }
   };
 
   // 监听定时任务
   browser.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === "syncHistory") {
-      // 获取同步间隔
+      // 获取同步间隔（分钟）
       const syncInterval = await getStorageValue(SYNC_INTERVAL, 1);
-      // 获取当前同步剩余时间
-      const syncRemain = await getStorageValue(SYNC_TIME_REMAIN, syncInterval);
-      // 当前同步剩余时间减1
-      const currentSyncRemain = syncRemain - 1;
-      // 如果当前同步剩余时间大于0，则不进行同步
-      if (currentSyncRemain > 0) {
-        console.log(`还需${currentSyncRemain}分钟进行同步，暂时跳过`);
-        // 更新同步剩余时间
-        await setStorageValue(SYNC_TIME_REMAIN, currentSyncRemain);
+      const intervalMs = syncInterval * 60 * 1000;
+
+      // 以"上次同步时间"为基准，与真实时间比较：
+      // 只要距上次同步已超过设定间隔，就立即同步。
+      const lastSync = await getStorageValue<number | null>(LAST_SYNC_TIME, null);
+      const elapsed = lastSync ? Date.now() - lastSync : Infinity;
+
+      if (elapsed < intervalMs) {
+        const remainMin = Math.ceil((intervalMs - elapsed) / 60000);
+        console.log(`距上次同步仅过${Math.floor(elapsed / 60000)}分钟，还需${remainMin}分钟，暂时跳过`);
         return;
       }
-      // 使用提取的函数处理定时任务
-      intervalSync(syncInterval);
+      // 真实时间已超过间隔，立即执行同步
+      intervalSync();
     } else if (alarm.name === "cloudSync") {
       // 获取云同步配置
       const config = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
@@ -136,21 +146,23 @@ export default defineBackground(() => {
         return;
       }
 
-      // 获取云同步间隔
+      // 获取云同步间隔（分钟）
       const syncInterval = config.syncInterval || 60;
-      // 获取当前云同步剩余时间
-      const syncRemain = await getStorageValue(CLOUD_SYNC_TIME_REMAIN, syncInterval);
-      // 当前同步剩余时间减1
-      const currentSyncRemain = syncRemain - 1;
-      // 如果当前同步剩余时间大于0，则不进行同步
-      if (currentSyncRemain > 0) {
-        console.log(`云同步还需${currentSyncRemain}分钟进行同步，暂时跳过`);
-        // 更新同步剩余时间
-        await setStorageValue(CLOUD_SYNC_TIME_REMAIN, currentSyncRemain);
+      const intervalMs = syncInterval * 60 * 1000;
+
+      // 以"上次云同步时间"为基准，与真实时间比较：
+      // 只要距上次同步已超过设定间隔，就立即同步。
+      const lastSync = await getStorageValue<number | null>(LAST_CLOUD_SYNC, null);
+      const elapsed = lastSync ? Date.now() - lastSync : Infinity;
+
+      if (elapsed < intervalMs) {
+        const remainMin = Math.ceil((intervalMs - elapsed) / 60000);
+        console.log(`距上次云同步仅过${Math.floor(elapsed / 60000)}分钟，还需${remainMin}分钟，暂时跳过`);
         return;
       }
-      // 执行云同步
-      intervalCloudSync(syncInterval);
+
+      // 真实时间已超过间隔，立即执行云同步
+      intervalCloudSync();
     }
   });
 
@@ -311,8 +323,6 @@ export default defineBackground(() => {
     try {
       const config = message.config as CloudSyncConfig;
       await setStorageValue(CLOUD_SYNC_CONFIG, config);
-      // 重置云同步剩余时间
-      await setStorageValue(CLOUD_SYNC_TIME_REMAIN, config.syncInterval || 60);
       sendResponse({ success: true, message: "配置保存成功" });
     } catch (error) {
       sendResponse({
@@ -600,7 +610,7 @@ export default defineBackground(() => {
       }
 
       // 更新最后同步时间
-      await browser.storage.local.set({ lastSync: Date.now() });
+      await browser.storage.local.set({ [LAST_SYNC_TIME]: Date.now() });
 
       return true;
     } catch (error) {

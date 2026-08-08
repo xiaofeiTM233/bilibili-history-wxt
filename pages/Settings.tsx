@@ -6,8 +6,7 @@ import {
   SYNC_INTERVAL,
   IS_SYNC_DELETE_FROM_BILIBILI,
   CLOUD_SYNC_CONFIG,
-  LAST_CLOUD_UPLOAD,
-  LAST_CLOUD_DOWNLOAD,
+  LAST_CLOUD_SYNC,
   EXPORT_FORMAT,
 } from "../utils/constants";
 import {
@@ -57,8 +56,7 @@ const Settings = () => {
   });
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [lastCloudUpload, setLastCloudUpload] = useState<number | null>(null);
-  const [lastCloudDownload, setLastCloudDownload] = useState<number | null>(null);
+  const [lastCloudSync, setLastCloudSync] = useState<number | null>(null);
   const [tokenStatus, setTokenStatus] = useState<{ isValid: boolean; expiresAt: number | null | undefined; isRefreshing: boolean }>({
     isValid: false,
     expiresAt: null,
@@ -74,8 +72,7 @@ const Settings = () => {
       );
       const storedSyncInterval = await getStorageValue(SYNC_INTERVAL, 1);
       const storedCloudConfig = await getStorageValue<CloudSyncConfig | undefined>(CLOUD_SYNC_CONFIG);
-      const storedLastUpload = await getStorageValue<number | null>(LAST_CLOUD_UPLOAD, null);
-      const storedLastDownload = await getStorageValue<number | null>(LAST_CLOUD_DOWNLOAD, null);
+      const storedLastSync = await getStorageValue<number | null>(LAST_CLOUD_SYNC, null);
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
@@ -92,8 +89,7 @@ const Settings = () => {
           });
         }
       }
-      setLastCloudUpload(storedLastUpload);
-      setLastCloudDownload(storedLastDownload);
+      setLastCloudSync(storedLastSync);
       setIsLoading(false);
     };
     loadSettings();
@@ -250,8 +246,8 @@ const Settings = () => {
       });
       if (response.success) {
         message.success("上传成功");
-        const uploadTime = await getStorageValue<number | null>(LAST_CLOUD_UPLOAD, null);
-        setLastCloudUpload(uploadTime);
+        const uploadTime = await getStorageValue<number | null>(LAST_CLOUD_SYNC, null);
+        setLastCloudSync(uploadTime);
       } else {
         message.error(response.message || "上传失败");
       }
@@ -277,8 +273,8 @@ const Settings = () => {
           });
           if (response.success) {
             message.success("下载成功");
-            const downloadTime = await getStorageValue<number | null>(LAST_CLOUD_DOWNLOAD, null);
-            setLastCloudDownload(downloadTime);
+            const downloadTime = await getStorageValue<number | null>(LAST_CLOUD_SYNC, null);
+            setLastCloudSync(downloadTime);
           } else {
             message.error(response.message || "下载失败");
           }
@@ -754,11 +750,8 @@ const Settings = () => {
                   {/* 最后同步时间和操作按钮 */}
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-500">
-                      {lastCloudUpload && (
-                        <p>上次上传时间：{dayjs(lastCloudUpload).format("YYYY-MM-DD HH:mm:ss")}</p>
-                      )}
-                      {lastCloudDownload && (
-                        <p>上次下载时间：{dayjs(lastCloudDownload).format("YYYY-MM-DD HH:mm:ss")}</p>
+                      {lastCloudSync && (
+                        <p>上次同步时间：{dayjs(lastCloudSync).format("YYYY-MM-DD HH:mm:ss")}</p>
                       )}
                     </div>
                     <div className="flex justify-end gap-2">

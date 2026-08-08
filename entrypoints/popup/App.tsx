@@ -5,8 +5,7 @@ import { CloudUploadOutlined, CloudDownloadOutlined } from "@ant-design/icons";
 import { CloudSyncConfig } from "../../utils/types";
 import {
   CLOUD_SYNC_CONFIG,
-  LAST_CLOUD_UPLOAD,
-  LAST_CLOUD_DOWNLOAD,
+  LAST_CLOUD_SYNC,
 } from "../../utils/constants";
 
 function App() {
@@ -33,15 +32,12 @@ function App() {
   // 自定义 setStatus：自动附加时间信息
   const setStatus = (currentStatus: string) => {
     const config = cloudConfigRef.current;
-    browser.storage.local.get(["lastSync", LAST_CLOUD_UPLOAD, LAST_CLOUD_DOWNLOAD]).then((result) => {
+    browser.storage.local.get(["lastSync", LAST_CLOUD_SYNC]).then((result) => {
       const lines: string[] = [];
       if (currentStatus) lines.push(currentStatus);
       if (result.lastSync) lines.push(`上次同步时间：${formatTime(result.lastSync)}`);
-      if (config?.enabled && config.syncDirection === "upload" && result[LAST_CLOUD_UPLOAD]) {
-        lines.push(`上次上传时间：${formatTime(result[LAST_CLOUD_UPLOAD])}`);
-      }
-      if (config?.enabled && config.syncDirection === "download" && result[LAST_CLOUD_DOWNLOAD]) {
-        lines.push(`上次下载时间：${formatTime(result[LAST_CLOUD_DOWNLOAD])}`);
+      if (config?.enabled && result[LAST_CLOUD_SYNC]) {
+        lines.push(`上次云同步：${formatTime(result[LAST_CLOUD_SYNC])}`);
       }
       setStatusState(lines.join("\n"));
     });

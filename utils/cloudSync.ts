@@ -509,8 +509,8 @@ export const uploadToCloud = async (config: CloudSyncConfig): Promise<CloudSyncR
   const result = await client.upload(backupData);
 
   if (result.success) {
-    // 更新最后上传时间
-    await setStorageValue("lastCloudUpload", Date.now());
+    // 更新最后同步时间
+    await setStorageValue("lastCloudSync", Date.now());
   }
 
   return result;
@@ -530,8 +530,8 @@ export const downloadFromCloud = async (config: CloudSyncConfig): Promise<CloudS
   if (result.success && result.data) {
     // 恢复数据（覆盖本地）
     await restoreFromBackupData(result.data);
-    // 更新最后下载时间
-    await setStorageValue("lastCloudDownload", Date.now());
+    // 更新最后同步时间
+    await setStorageValue("lastCloudSync", Date.now());
   }
 
   return { success: result.success, message: result.message };
