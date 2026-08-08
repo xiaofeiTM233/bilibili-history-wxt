@@ -13,9 +13,9 @@ import {
   exportHistoryToCSV,
   exportHistoryToJSON,
 } from "../utils/export";
-import { message, Modal, Switch, Button, Select, InputNumber, Card, Space, Divider, Input, Alert } from "antd";
+import { message, Modal, Switch, Button, Select, InputNumber, Card, Space, Divider, Input, Alert, Tooltip } from "antd";
 import { HistoryItem, CloudSyncConfig, CloudSyncType } from "../utils/types";
-import { CloudOutlined, CloudUploadOutlined, CloudDownloadOutlined, LinkOutlined } from "@ant-design/icons";
+import { CloudOutlined, CloudUploadOutlined, CloudDownloadOutlined, LinkOutlined, ExclamationCircleFilled } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const Settings = () => {
@@ -57,6 +57,7 @@ const Settings = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudSync, setLastCloudSync] = useState<number | null>(null);
+  const [cloudIntervalWarning, setCloudIntervalWarning] = useState(false);
   const [tokenStatus, setTokenStatus] = useState<{ isValid: boolean; expiresAt: number | null | undefined; isRefreshing: boolean }>({
     isValid: false,
     expiresAt: null,
@@ -105,6 +106,12 @@ const Settings = () => {
     setIsSyncDeleteFromBilibili(checked);
     await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, checked);
     message.success("配置已自动保存");
+  };
+
+  const willSyncSoon = (newInterval: number, lastSync: number | null): boolean => {
+    if (lastSync == null) return false;
+    const elapsedMin = (Date.now() - lastSync) / 60000;
+    return newInterval - elapsedMin <= 1;
   };
 
   const handleSyncIntervalChange = async (newInterval: number) => {
@@ -213,6 +220,25 @@ const Settings = () => {
 
   // 云同步相关处理函数
   const handleCloudConfigChange = async (updates: Partial<CloudSyncConfig>) => {
+    // 仅当本次修改涉及同步间隔时才做"1分钟内触发"的拦截判断
+    if (updates.syncInterval != null) {
+      const lastSync = await getStorageValue<number | null>(LAST_CLOUD_SYNC, null);
+      if (willSyncSoon(updates.syncInterval, lastSync)) {
+        const target = updates;
+        Modal.confirm({
+          title: "确认修改云同步间隔？",
+          content: "修改后将在 1 分钟内立即触发一次云同步。是否仍然保存该间隔？",
+          okText: "仍然保存",
+          cancelText: "取消",
+          onOk: async () => {
+            await setStorageValue(CLOUD_SYNC_CONFIG, { ...cloudConfig, ...target });
+            setCloudConfig((prev) => ({ ...prev, ...target }));
+            message.success("配置已自动保存");
+          },
+        });
+        return;
+      }
+    }
     await setStorageValue(CLOUD_SYNC_CONFIG, { ...cloudConfig, ...updates });
     setCloudConfig((prev) => ({ ...prev, ...updates }));
     message.success("配置已自动保存");
@@ -738,9 +764,21 @@ const Settings = () => {
                           min={5}
                           max={1440}
                           value={cloudConfig.syncInterval}
-                          onChange={(value) => handleCloudConfigChange({ syncInterval: value || 60 })}
+                          onChange={(value) => {
+                            const next = value || 60;
+                            // 实时计算：按当前值是否会在 1 分钟内触发同步
+                            getStorageValue<number | null>(LAST_CLOUD_SYNC, null).then((lastSync) => {
+                              setCloudIntervalWarning(willSyncSoon(next, lastSync));
+                            });
+                            handleCloudConfigChange({ syncInterval: next });
+                          }}
                           style={{ width: 200 }}
                         />
+                        {cloudIntervalWarning && (
+                          <Tooltip title="按当前进度，保存后将在 1 分钟内立即触发一次云同步">
+                            <ExclamationCircleFilled style={{ color: "#faad14", fontSize: 18 }} />
+                          </Tooltip>
+                        )}
                       </Space>
                     </div>
                   )}
