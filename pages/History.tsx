@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getHistory, getTotalHistoryCount } from "../utils/db";
-import { HistoryItem as HistoryItemType } from "../utils/types";
+import type { HistoryItem as HistoryItemType } from "../utils/types";
 import { useDebounce } from "use-debounce";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";

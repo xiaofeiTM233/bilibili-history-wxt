@@ -10,7 +10,7 @@ import {
 import { openDB, getItem, deleteHistoryItem } from "../utils/db";
 import { getStorageValue, setStorageValue } from "../utils/storage";
 import { uploadToCloud, downloadFromCloud, testCloudConnection, oneDriveAuth, ensureValidOneDriveToken, refreshOneDriveToken } from "../utils/cloudSync";
-import { CloudSyncConfig, CloudSyncResult } from "../utils/types";
+import type { CloudSyncConfig, CloudSyncResult } from "../utils/types";
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });

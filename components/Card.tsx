@@ -1,4 +1,4 @@
-import { HistoryItem as HistoryItemType } from "../utils/types";
+import type { HistoryItem as HistoryItemType } from "../utils/types";
 import { Trash2 } from "lucide-react";
 import { message } from "antd";
 import { IS_SYNC_DELETE } from "../utils/constants";

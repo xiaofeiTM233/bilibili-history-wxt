@@ -1,4 +1,4 @@
-import { CloudSyncConfig, CloudSyncResult, BackupData } from "./types";
+import type { CloudSyncConfig, CloudSyncResult, BackupData } from "./types";
 import { getAllHistory, clearHistory, saveHistory } from "./db";
 import { getStorageValue, setStorageValue } from "./storage";
 import { CLOUD_SYNC_CONFIG } from "./constants";

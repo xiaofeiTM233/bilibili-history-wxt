@@ -1,4 +1,4 @@
-import { HistoryItem } from "./types";
+import type { HistoryItem } from "./types";
 import { getAllHistory } from "./db";
 import { getTypeTag, getContentUrl } from "./common";
 

@@ -1,6 +1,6 @@
 import { Spin, Empty } from "antd";
 import { Card } from "./Card";
-import { HistoryItem as HistoryItemType } from "../utils/types";
+import type { HistoryItem as HistoryItemType } from "../utils/types";
 import { useRef, forwardRef, useImperativeHandle } from "react";
 
 interface ContentGridProps {

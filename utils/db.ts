@@ -1,4 +1,4 @@
-import { DBConfig, HistoryItem } from "./types";
+import type { DBConfig, HistoryItem } from "./types";
 import dayjs from "dayjs";
 
 const DB_CONFIG: DBConfig = {

@@ -1,4 +1,4 @@
-import { HistoryItem } from "./types";
+import type { HistoryItem } from "./types";
 
 export const getTypeTag = (business: string): string => {
   switch (business) {

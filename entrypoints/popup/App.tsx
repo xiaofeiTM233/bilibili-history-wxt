@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { Button, Checkbox, Space } from "antd";
 import { CloudUploadOutlined, CloudDownloadOutlined } from "@ant-design/icons";
-import { CloudSyncConfig } from "../../utils/types";
+import type { CloudSyncConfig } from "../../utils/types";
 import {
   CLOUD_SYNC_CONFIG,
   LAST_CLOUD_SYNC,

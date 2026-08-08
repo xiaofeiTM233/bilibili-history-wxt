@@ -14,7 +14,7 @@ import {
   exportHistoryToJSON,
 } from "../utils/export";
 import { message, Modal, Switch, Button, Select, InputNumber, Card, Space, Divider, Input, Alert, Tooltip } from "antd";
-import { HistoryItem, CloudSyncConfig, CloudSyncType } from "../utils/types";
+import type { HistoryItem, CloudSyncConfig, CloudSyncType } from "../utils/types";
 import { CloudOutlined, CloudUploadOutlined, CloudDownloadOutlined, LinkOutlined, ExclamationCircleFilled } from "@ant-design/icons";
 import dayjs from "dayjs";
 
