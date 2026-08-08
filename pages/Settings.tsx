@@ -33,7 +33,7 @@ const Settings = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("json");
-  const [syncInterval, setSyncInterval] = useState(1);
+  const [syncIntervalDraft, setSyncIntervalDraft] = useState(1);
 
   // 从存储加载导出格式
   useEffect(() => {
@@ -58,6 +58,7 @@ const Settings = () => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [lastCloudSync, setLastCloudSync] = useState<number | null>(null);
   const [cloudIntervalWarning, setCloudIntervalWarning] = useState(false);
+  const [cloudIntervalDraft, setCloudIntervalDraft] = useState(60);
   const [tokenStatus, setTokenStatus] = useState<{ isValid: boolean; expiresAt: number | null | undefined; isRefreshing: boolean }>({
     isValid: false,
     expiresAt: null,
@@ -77,7 +78,7 @@ const Settings = () => {
 
       setIsSyncDelete(syncDelete);
       setIsSyncDeleteFromBilibili(syncDeleteFromBilibili);
-      setSyncInterval(storedSyncInterval);
+      setSyncIntervalDraft(storedSyncInterval);
       if (storedCloudConfig) {
         setCloudConfig(storedCloudConfig);
         // 检查 OneDrive Token 状态
@@ -91,6 +92,7 @@ const Settings = () => {
         }
       }
       setLastCloudSync(storedLastSync);
+      setCloudIntervalDraft(storedCloudConfig?.syncInterval ?? 60);
       setIsLoading(false);
     };
     loadSettings();
@@ -116,7 +118,6 @@ const Settings = () => {
 
   const handleSyncIntervalChange = async (newInterval: number) => {
     if (newInterval >= 1) {
-      setSyncInterval(newInterval);
       await setStorageValue(SYNC_INTERVAL, newInterval);
       message.success("配置已自动保存");
     }
@@ -661,8 +662,13 @@ const Settings = () => {
                     mode="spinner"
                     min={1}
                     max={999}
-                    value={syncInterval}
-                    onChange={(value) => handleSyncIntervalChange(value || 1)}
+                    value={syncIntervalDraft}
+                    onChange={(value) => {
+                      setSyncIntervalDraft(value || 1);
+                    }}
+                    onBlur={() => {
+                      handleSyncIntervalChange(syncIntervalDraft);
+                    }}
                     style={{ width: 200 }}
                   />
                 </Space>
@@ -763,14 +769,15 @@ const Settings = () => {
                           mode="spinner"
                           min={5}
                           max={1440}
-                          value={cloudConfig.syncInterval}
+                          value={cloudIntervalDraft}
                           onChange={(value) => {
-                            const next = value || 60;
-                            // 实时计算：按当前值是否会在 1 分钟内触发同步
+                            setCloudIntervalDraft(value || 60);
+                          }}
+                          onBlur={() => {
                             getStorageValue<number | null>(LAST_CLOUD_SYNC, null).then((lastSync) => {
-                              setCloudIntervalWarning(willSyncSoon(next, lastSync));
+                              setCloudIntervalWarning(willSyncSoon(cloudIntervalDraft, lastSync));
                             });
-                            handleCloudConfigChange({ syncInterval: next });
+                            handleCloudConfigChange({ syncInterval: cloudIntervalDraft });
                           }}
                           style={{ width: 200 }}
                         />
