@@ -11,18 +11,8 @@ export default defineConfig({
       "tabs",
       "cookies",
       "alarms",
-      "declarativeNetRequest",
       "identity",
     ],
-    declarative_net_request: {
-      rule_resources: [
-        {
-          id: "referrer-bilibili",
-          enabled: true,
-          path: "referrer.json",
-        },
-      ],
-    },
     host_permissions: ["<all_urls>"],
     web_accessible_resources: [
       {
