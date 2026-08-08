@@ -102,17 +102,20 @@ const Settings = () => {
   const handleSyncDeleteChange = async (checked: boolean) => {
     setIsSyncDelete(checked);
     await setStorageValue(IS_SYNC_DELETE, checked);
+    message.success("配置已自动保存");
   };
 
   const handleSyncDeleteFromBilibiliChange = async (checked: boolean) => {
     setIsSyncDeleteFromBilibili(checked);
     await setStorageValue(IS_SYNC_DELETE_FROM_BILIBILI, checked);
+    message.success("配置已自动保存");
   };
 
   const handleSyncIntervalChange = async (newInterval: number) => {
     if (newInterval >= 1) {
       setSyncInterval(newInterval);
       await setStorageValue(SYNC_INTERVAL, newInterval);
+      message.success("配置已自动保存");
     }
   };
 
@@ -213,13 +216,10 @@ const Settings = () => {
   };
 
   // 云同步相关处理函数
-  const updateCloudConfig = (updates: Partial<CloudSyncConfig>) => {
-    setCloudConfig((prev) => ({ ...prev, ...updates }));
-  };
-
   const handleCloudConfigChange = async (updates: Partial<CloudSyncConfig>) => {
     await setStorageValue(CLOUD_SYNC_CONFIG, { ...cloudConfig, ...updates });
     setCloudConfig((prev) => ({ ...prev, ...updates }));
+    message.success("配置已自动保存");
   };
 
   const handleTestConnection = async () => {
@@ -557,6 +557,7 @@ const Settings = () => {
                     onChange={(value) => {
                       setExportFormat(value as "csv" | "json");
                       setStorageValue(EXPORT_FORMAT, value as "csv" | "json");
+                      message.success("配置已自动保存");
                     }}
                     disabled={isExporting}
                     style={{ width: 100 }}
