@@ -445,7 +445,7 @@ export default defineBackground(() => {
           tokenExpires: updatedConfig.tokenExpires,
         });
       } else {
-        console.error("OneDrive Token 手动刷新失败:", result.message);
+        console.error("OneDrive Token 手动刷新失败: " + JSON.stringify(result));
         
         // 如果刷新令牌已过期，设置过期标志
         if (result.refreshTokenExpired) {
@@ -461,6 +461,7 @@ export default defineBackground(() => {
           success: false,
           message: result.message,
           refreshTokenExpired: result.refreshTokenExpired,
+          errorDescription: result.errorDescription,
         });
       }
     } catch (error) {

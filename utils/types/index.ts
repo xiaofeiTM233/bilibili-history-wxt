@@ -70,11 +70,12 @@ export interface CloudSyncConfig {
 /**
  * 云同步结果
  */
-export interface CloudSyncResult<T = void> {
+export interface CloudSyncResult<T = any> {
   success: boolean;
   message: string;
   data?: T;
   refreshTokenExpired?: boolean; // 刷新令牌是否已过期
+  [key: string]: any;
 }
 
 /**

@@ -124,18 +124,12 @@ export const refreshOneDriveToken = async (refreshToken: string): Promise<CloudS
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json().catch(() => ({}));
-      console.error("OneDrive Token 刷新失败:", {
-        status: tokenResponse.status,
-        statusText: tokenResponse.statusText,
-        error: errorData.error,
-        error_description: errorData.error_description,
-        error_code: errorData.error_code,
-      });
-      
+      console.error("OneDrive Token 刷新失败: " + JSON.stringify(errorData));
+
       // 根据错误类型返回更具体的提示
       let errorMessage = "令牌刷新失败，请重新授权";
       const isRefreshTokenExpired = errorData.error === "invalid_grant";
-      
+
       if (isRefreshTokenExpired) {
         errorMessage = "刷新令牌已过期，请重新授权";
       } else if (errorData.error === "invalid_scope") {
@@ -143,8 +137,13 @@ export const refreshOneDriveToken = async (refreshToken: string): Promise<CloudS
       } else if (errorData.error === "invalid_client") {
         errorMessage = "客户端配置错误，请重新授权";
       }
-      
-      return { success: false, message: errorMessage, refreshTokenExpired: isRefreshTokenExpired };
+
+      return {
+        success: false,
+        message: errorMessage,
+        refreshTokenExpired: isRefreshTokenExpired,
+        errorDescription: errorData,
+      };
     }
 
     const tokenData = await tokenResponse.json();

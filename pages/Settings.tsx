@@ -396,7 +396,12 @@ const Settings = () => {
             setCloudConfig(configResponse.config);
           }
         } else {
-          message.error(response.message || "刷新失败");
+          message.error(
+            (response.message || "刷新失败") +
+              (response.errorDescription
+                ? "：" + JSON.stringify(response.errorDescription)
+                : "")
+          );
           // 如果刷新令牌已过期，更新配置状态
           if (response.refreshTokenExpired) {
             const configResponse = await browser.runtime.sendMessage({
