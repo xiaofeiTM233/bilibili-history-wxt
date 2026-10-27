@@ -164,32 +164,46 @@ const matchDate = (item: HistoryItem, date: string) => {
   return dateStr === date;
 };
 
+// 文本归一化：全角转半角、合并空白、统一小写，避免因输入法/空格导致匹配失败
+const normalizeText = (text: string | undefined | null) =>
+  (text ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+
+// 按空白拆分关键词，支持多关键词模糊匹配（如 "原神 攻略"）
+const tokenize = (keyword: string) => normalizeText(keyword).split(" ").filter(Boolean);
+
+// 所有关键词都命中才算匹配（AND 语义）
+const containsAllTokens = (
+  haystack: string | undefined | null,
+  tokens: string[]
+) => {
+  const text = normalizeText(haystack);
+  return tokens.every((token) => text.includes(token));
+};
+
 const matchKeyword = (item: HistoryItem, keyword: string) => {
-  return !keyword || item.title.toLowerCase().includes(keyword.toLowerCase());
+  const tokens = tokenize(keyword);
+  return tokens.length === 0 || containsAllTokens(item.title, tokens);
 };
 
 const matchAuthorKeyword = (item: HistoryItem, authorKeyword: string) => {
-  return (
-    !authorKeyword ||
-    item.author_name.toLowerCase().includes(authorKeyword.toLowerCase())
-  );
+  const tokens = tokenize(authorKeyword);
+  return tokens.length === 0 || containsAllTokens(item.author_name, tokens);
 };
 
-// 匹配 BV 号（精准搜索）
+// 匹配 BV 号（精准搜索，忽略大小写、全角字符与空格，允许省略 BV 前缀）
 const matchBvid = (item: HistoryItem, bvid: string) => {
-  if (!bvid) return true;
-  // 支持 BV、bv、Bv 等大小写组合
-  const normalizedInput = bvid.toLowerCase();
-  const normalizedBvid = item.bvid.toLowerCase();
-  return normalizedBvid === normalizedInput;
+  const input = normalizeText(bvid).replace(/\s/g, "");
+  if (!input) return true;
+  const normalizedBvid = normalizeText(item.bvid).replace(/\s/g, "");
+  const target = input.startsWith("bv") ? input : `bv${input}`;
+  return normalizedBvid === target;
 };
 
-// 匹配 av 号（精准搜索）
+// 匹配 av 号（精准搜索，允许省略 av 前缀）
 const matchId = (item: HistoryItem, id: string) => {
-  if (!id) return true;
-  // 移除可能的前缀
-  const numericId = id.replace(/^av/i, "");
-  return item.id.toString() === numericId;
+  const input = normalizeText(id).replace(/\s/g, "").replace(/^av/, "");
+  if (!input) return true;
+  return item.id?.toString() === input;
 };
 
 // 匹配日期区间
@@ -210,26 +224,25 @@ const matchDateRange = (item: HistoryItem, startDate: string, endDate: string) =
   return true;
 };
 
-// 综合搜索（支持模糊搜索标题和作者，也支持精准搜索BV号和AV号）
+// 综合搜索（支持多关键词模糊搜索标题和作者，也支持精准搜索BV号和AV号）
 const matchAll = (item: HistoryItem, keyword: string) => {
-  if (!keyword) return true;
+  const tokens = tokenize(keyword);
+  if (tokens.length === 0) return true;
+
+  const normalizedInput = normalizeText(keyword).replace(/\s/g, "");
 
   // 检查是否是BV号精准搜索
-  if (keyword.toLowerCase().startsWith('bv') && matchBvid(item, keyword)) {
+  if (normalizedInput.startsWith("bv") && matchBvid(item, normalizedInput)) {
     return true;
   }
 
   // 检查是否是av号精准搜索
-  if (keyword.toLowerCase().startsWith('av') && matchId(item, keyword)) {
+  if (normalizedInput.startsWith("av") && matchId(item, normalizedInput)) {
     return true;
   }
 
-  // 模糊搜索标题和作者
-  const lowerKeyword = keyword.toLowerCase();
-  return (
-    item.title.toLowerCase().includes(lowerKeyword) ||
-    item.author_name.toLowerCase().includes(lowerKeyword)
-  );
+  // 模糊搜索标题和作者：每个关键词在标题或作者中命中即可
+  return containsAllTokens(`${item.title ?? ""} ${item.author_name ?? ""}`, tokens);
 };
 
 export const getTotalHistoryCount = async (): Promise<number> => {
